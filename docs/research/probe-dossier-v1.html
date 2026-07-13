@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MedLink — Sonde Dossier Patient v1</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f4f5f7;
+    --surface: #ffffff;
+    --sidebar-bg: #1a2233;
+    --sidebar-text: #8fa3bf;
+    --sidebar-active-bg: #2d3f5c;
+    --accent: #2563eb;
+    --alert: #dc2626;
+    --alert-bg: #fef2f2;
+    --alert-border: #fecaca;
+    --warn: #d97706;
+    --warn-bg: #fffbeb;
+    --ok: #16a34a;
+    --ok-bg: #f0fdf4;
+    --purple: #7c3aed;
+    --purple-bg: #ede9fe;
+    --text: #111827;
+    --text-muted: #6b7280;
+    --text-subtle: #9ca3af;
+    --border: #e5e7eb;
+    --radius: 8px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.5;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ── Top bar ── */
+  .topbar {
+    background: var(--sidebar-bg);
+    padding: 0 20px;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-shrink: 0;
+  }
+  .topbar-logo { font-weight: 700; font-size: 16px; color: #fff; letter-spacing: -0.3px; }
+  .topbar-logo span { color: #60a5fa; }
+  .topbar-sep { width: 1px; height: 20px; background: #2d3f5c; }
+  .topbar-back { color: #8fa3bf; font-size: 13px; cursor: pointer; }
+  .topbar-back:hover { color: #c9d8ed; }
+  .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 16px; }
+  .topbar-practitioner { font-size: 13px; color: #8fa3bf; }
+  .topbar-avatar {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: #2d3f5c; color: #60a5fa;
+    font-weight: 700; font-size: 12px;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  /* ── Patient banner ── */
+  .patient-banner {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-shrink: 0;
+  }
+  .patient-avatar {
+    width: 52px; height: 52px; border-radius: 50%;
+    background: #dbeafe; color: var(--accent);
+    font-weight: 700; font-size: 18px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .patient-info { flex: 1; }
+  .patient-name { font-size: 18px; font-weight: 700; }
+  .patient-meta { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+  .patient-tags { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+  .patient-tag {
+    font-size: 11px; font-weight: 500; padding: 2px 8px;
+    border-radius: 12px; border: 1px solid;
+  }
+  .tag-condition { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
+  .tag-alert     { background: var(--alert-bg); color: var(--alert); border-color: var(--alert-border); }
+  .tag-allergy   { background: #fff7ed; color: #c2410c; border-color: #fed7aa; }
+
+  .patient-banner-right { display: flex; gap: 24px; flex-shrink: 0; }
+  .banner-stat { text-align: center; }
+  .banner-stat-value { font-size: 20px; font-weight: 700; }
+  .banner-stat-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-subtle); }
+
+  /* ── Layout ── */
+  .layout { display: flex; flex: 1; overflow: hidden; }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    width: 190px; background: var(--sidebar-bg);
+    flex-shrink: 0; padding: 16px 0;
+    display: flex; flex-direction: column; gap: 2px;
+    overflow-y: auto;
+  }
+  .sidebar-section-label {
+    font-size: 10px; font-weight: 600;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    color: #4a5e7a; padding: 12px 16px 4px;
+  }
+  .sidebar-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 16px; color: var(--sidebar-text);
+    cursor: pointer; font-size: 13px;
+  }
+  .sidebar-item:hover { background: rgba(255,255,255,0.05); color: #c9d8ed; }
+  .sidebar-item.active { background: var(--sidebar-active-bg); color: #fff; font-weight: 500; }
+  .sidebar-item .icon { font-size: 15px; opacity: 0.8; }
+  .sidebar-badge {
+    margin-left: auto; background: var(--alert); color: white;
+    font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 10px;
+  }
+
+  /* ── Main ── */
+  .main {
+    flex: 1; overflow-y: auto; padding: 20px;
+    display: flex; flex-direction: column; gap: 16px;
+  }
+
+  /* ── Tab bar ── */
+  .tab-bar {
+    display: flex; gap: 0; border-bottom: 2px solid var(--border);
+    margin-bottom: 4px;
+  }
+  .tab {
+    padding: 10px 16px; font-size: 13px; font-weight: 500;
+    color: var(--text-muted); cursor: pointer;
+    border-bottom: 2px solid transparent; margin-bottom: -2px;
+    transition: color 0.15s;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* ── Two-column content ── */
+  .content-grid { display: grid; grid-template-columns: 1fr 260px; gap: 16px; align-items: start; }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden;
+  }
+  .card + .card { margin-top: 12px; }
+  .card-header {
+    padding: 12px 16px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .card-header-title { font-weight: 600; font-size: 13px; }
+  .card-header-sub { font-size: 12px; color: var(--text-muted); margin-left: auto; }
+  .card-body { padding: 16px; }
+
+  /* ── ATCD ── */
+  .atcd-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .atcd-section-label {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.07em; color: var(--text-subtle); margin-bottom: 6px;
+  }
+  .atcd-item {
+    display: flex; align-items: baseline; gap: 6px;
+    padding: 5px 0; border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+  .atcd-item:last-child { border-bottom: none; }
+  .atcd-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; background: var(--accent); margin-top: 4px; }
+  .atcd-dot.red { background: var(--alert); }
+  .atcd-dot.amber { background: var(--warn); }
+  .atcd-name { flex: 1; }
+  .atcd-since { font-size: 11px; color: var(--text-subtle); flex-shrink: 0; }
+
+  /* ── Timeline ── */
+  .timeline { display: flex; flex-direction: column; }
+  .timeline-item {
+    display: flex; gap: 14px; padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .timeline-item:last-child { border-bottom: none; }
+  .timeline-left { flex-shrink: 0; width: 52px; text-align: center; padding-top: 2px; }
+  .timeline-icon-wrap {
+    width: 34px; height: 34px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; margin: 0 auto 4px;
+  }
+  .ic-consult  { background: #dbeafe; }
+  .ic-result   { background: #d1fae5; }
+  .ic-result-alert { background: var(--alert-bg); }
+  .ic-ordonnance { background: var(--purple-bg); }
+  .ic-hospit   { background: #fef3c7; }
+  .timeline-date { font-size: 10px; color: var(--text-subtle); }
+  .timeline-body { flex: 1; }
+  .timeline-title { font-weight: 600; font-size: 13px; margin-bottom: 2px; }
+  .timeline-title.alert { color: var(--alert); }
+  .timeline-sub { font-size: 12px; color: var(--text-muted); line-height: 1.4; }
+  .timeline-tag {
+    display: inline-block; margin-top: 5px;
+    font-size: 11px; padding: 2px 7px; border-radius: 4px; font-weight: 500;
+  }
+  .ttag-consult { background: #dbeafe; color: #1d4ed8; }
+  .ttag-result  { background: #d1fae5; color: #065f46; }
+  .ttag-alert   { background: var(--alert-bg); color: var(--alert); }
+  .ttag-ordo    { background: var(--purple-bg); color: var(--purple); }
+  .ttag-hospit  { background: #fef3c7; color: #92400e; }
+
+  /* ── Traitements ── */
+  .treatment-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 0; border-bottom: 1px solid var(--border);
+  }
+  .treatment-item:last-child { border-bottom: none; padding-bottom: 0; }
+  .treatment-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); flex-shrink: 0; }
+  .treatment-name { font-size: 13px; font-weight: 500; flex: 1; }
+  .treatment-dose { font-size: 11px; color: var(--text-muted); }
+  .treatment-since { font-size: 11px; color: var(--text-subtle); }
+
+  /* ── Notes ── */
+  .right-col { display: flex; flex-direction: column; gap: 12px; }
+  .note-item {
+    padding: 10px 0; border-bottom: 1px solid var(--border);
+  }
+  .note-item:last-child { border-bottom: none; padding-bottom: 0; }
+  .note-date { font-size: 10px; color: var(--text-subtle); margin-bottom: 4px; }
+  .note-text { font-size: 12px; line-height: 1.5; color: var(--text); }
+  .note-tag {
+    display: inline-block; font-size: 10px;
+    padding: 1px 5px; border-radius: 3px; margin-top: 4px;
+  }
+  .ntag-attention { background: #fef3c7; color: #92400e; }
+  .ntag-social    { background: #f0fdf4; color: #166534; }
+  .ntag-preference{ background: var(--purple-bg); color: var(--purple); }
+
+  /* ── Action buttons ── */
+  .action-row { display: flex; flex-direction: column; gap: 6px; }
+  .btn {
+    padding: 8px 14px; border-radius: 6px;
+    font-size: 13px; font-weight: 500; cursor: pointer;
+    border: none; text-align: center; transition: opacity 0.15s;
+  }
+  .btn:hover { opacity: 0.85; }
+  .btn-primary   { background: var(--accent); color: white; }
+  .btn-secondary { background: #f3f4f6; color: var(--text); border: 1px solid var(--border); }
+
+  /* ── Probe badge ── */
+  .probe-badge {
+    position: fixed; bottom: 12px; right: 12px;
+    background: #1a2233; color: #8fa3bf;
+    font-size: 10px; padding: 5px 10px; border-radius: 20px;
+    pointer-events: none; z-index: 100;
+  }
+</style>
+</head>
+<body>
+
+<!-- Top bar -->
+<div class="topbar">
+  <div class="topbar-logo">Med<span>Link</span></div>
+  <div class="topbar-sep"></div>
+  <div class="topbar-back">← Mon espace</div>
+  <div class="topbar-right">
+    <div class="topbar-practitioner">Dr. A. Durand</div>
+    <div class="topbar-avatar">AD</div>
+  </div>
+</div>
+
+<!-- Patient banner -->
+<div class="patient-banner">
+  <div class="patient-avatar">MR</div>
+  <div class="patient-info">
+    <div class="patient-name">Michel Rousseau</div>
+    <div class="patient-meta">58 ans · né le 14/03/1968 · Médecin traitant : Dr. Durand · Suivi depuis 2014</div>
+    <div class="patient-tags">
+      <span class="patient-tag tag-condition">Diabète type 2</span>
+      <span class="patient-tag tag-condition">HTA</span>
+      <span class="patient-tag tag-condition">Dyslipidémie</span>
+      <span class="patient-tag tag-alert">⚠ IMC 31</span>
+      <span class="patient-tag tag-allergy">Allergie pénicilline</span>
+    </div>
+  </div>
+  <div class="patient-banner-right">
+    <div class="banner-stat">
+      <div class="banner-stat-value" style="color:var(--accent)">7</div>
+      <div class="banner-stat-label">Traitements</div>
+    </div>
+    <div class="banner-stat">
+      <div class="banner-stat-value" style="color:var(--warn)">2</div>
+      <div class="banner-stat-label">Alertes</div>
+    </div>
+    <div class="banner-stat">
+      <div class="banner-stat-value" style="color:var(--text-muted)">12 ans</div>
+      <div class="banner-stat-label">Suivi</div>
+    </div>
+  </div>
+</div>
+
+<div class="layout">
+
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="sidebar-section-label">Dossier</div>
+    <div class="sidebar-item active"><span class="icon">📋</span> Résumé</div>
+    <div class="sidebar-item"><span class="icon">🕐</span> Historique</div>
+    <div class="sidebar-item">
+      <span class="icon">🧪</span> Résultats
+      <span class="sidebar-badge">2</span>
+    </div>
+    <div class="sidebar-item"><span class="icon">💊</span> Ordonnances</div>
+    <div class="sidebar-item"><span class="icon">📎</span> Documents</div>
+    <div class="sidebar-section-label">Histoire</div>
+    <div class="sidebar-item"><span class="icon">🏥</span> Antécédents</div>
+    <div class="sidebar-item"><span class="icon">👨‍👩‍👧</span> Famille</div>
+    <div class="sidebar-item"><span class="icon">💉</span> Vaccins</div>
+    <div class="sidebar-section-label">Mon travail</div>
+    <div class="sidebar-item"><span class="icon">📝</span> Mes notes</div>
+    <div class="sidebar-item"><span class="icon">📬</span> Courriers</div>
+  </nav>
+
+  <!-- Main -->
+  <main class="main">
+
+    <!-- Tab bar -->
+    <div class="tab-bar">
+      <div class="tab active">Résumé</div>
+      <div class="tab">Historique</div>
+      <div class="tab">Résultats</div>
+      <div class="tab">Ordonnances</div>
+      <div class="tab">Documents</div>
+      <div class="tab">Antécédents</div>
+    </div>
+
+    <!-- Content grid -->
+    <div class="content-grid">
+
+      <!-- Left: main content -->
+      <div>
+
+        <!-- Antécédents principaux -->
+        <div class="card">
+          <div class="card-header">
+            <span>🏥</span>
+            <span class="card-header-title">Antécédents principaux</span>
+          </div>
+          <div class="card-body">
+            <div class="atcd-grid">
+              <div>
+                <div class="atcd-section-label">Médical</div>
+                <div class="atcd-item"><div class="atcd-dot red"></div><div class="atcd-name">Diabète type 2</div><div class="atcd-since">dep. 2016</div></div>
+                <div class="atcd-item"><div class="atcd-dot amber"></div><div class="atcd-name">Hypertension artérielle</div><div class="atcd-since">dep. 2014</div></div>
+                <div class="atcd-item"><div class="atcd-dot amber"></div><div class="atcd-name">Dyslipidémie</div><div class="atcd-since">dep. 2017</div></div>
+                <div class="atcd-item"><div class="atcd-dot"></div><div class="atcd-name">Stéatose hépatique</div><div class="atcd-since">2021</div></div>
+              </div>
+              <div>
+                <div class="atcd-section-label">Chirurgical · Allergies</div>
+                <div class="atcd-item"><div class="atcd-dot"></div><div class="atcd-name">Appendicectomie</div><div class="atcd-since">1992</div></div>
+                <div class="atcd-item"><div class="atcd-dot"></div><div class="atcd-name">Hernie inguinale</div><div class="atcd-since">2019</div></div>
+                <div class="atcd-item"><div class="atcd-dot red"></div><div class="atcd-name">Allergie Pénicilline</div><div class="atcd-since">⚠</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Événements récents -->
+        <div class="card" style="margin-top:12px">
+          <div class="card-header">
+            <span>🕐</span>
+            <span class="card-header-title">Événements récents</span>
+            <span class="card-header-sub">6 derniers mois</span>
+          </div>
+          <div class="card-body" style="padding: 4px 16px;">
+            <div class="timeline">
+
+              <div class="timeline-item">
+                <div class="timeline-left">
+                  <div class="timeline-icon-wrap ic-result-alert">🔴</div>
+                  <div class="timeline-date">2 juil.<br>2026</div>
+                </div>
+                <div class="timeline-body">
+                  <div class="timeline-title alert">HbA1c 8,9 % — hors cible</div>
+                  <div class="timeline-sub">Laboratoire Biomédis · Objectif &lt; 7 % · Deuxième élévation consécutive</div>
+                  <span class="timeline-tag ttag-alert">À traiter</span>
+                </div>
+              </div>
+
+              <div class="timeline-item">
+                <div class="timeline-left">
+                  <div class="timeline-icon-wrap ic-consult">📋</div>
+                  <div class="timeline-date">18 juin<br>2026</div>
+                </div>
+                <div class="timeline-body">
+                  <div class="timeline-title">Consultation suivi trimestriel</div>
+                  <div class="timeline-sub">HbA1c 8,1 % — augmentation. Discussion observance. Patient reconnaît irrégularités alimentaires. Bilan demandé dans 2 semaines.</div>
+                  <span class="timeline-tag ttag-consult">Consultation</span>
+                </div>
+              </div>
+
+              <div class="timeline-item">
+                <div class="timeline-left">
+                  <div class="timeline-icon-wrap ic-result">🧪</div>
+                  <div class="timeline-date">15 juin<br>2026</div>
+                </div>
+                <div class="timeline-body">
+                  <div class="timeline-title">Bilan lipidique — dans les normes</div>
+                  <div class="timeline-sub">LDL 1,1 g/L · HDL 0,5 g/L · TG 1,4 g/L · Objectif LDL atteint sous statine</div>
+                  <span class="timeline-tag ttag-result">Résultat normal</span>
+                </div>
+              </div>
+
+              <div class="timeline-item">
+                <div class="timeline-left">
+                  <div class="timeline-icon-wrap ic-ordonnance">💊</div>
+                  <div class="timeline-date">18 mars<br>2026</div>
+                </div>
+                <div class="timeline-body">
+                  <div class="timeline-title">Ajustement traitement — Metformine augmentée</div>
+                  <div class="timeline-sub">Metformine 1000 mg × 2/j → 1000 mg × 3/j. Ajout Empagliflozine 10 mg. HbA1c 7,8 % à ce moment.</div>
+                  <span class="timeline-tag ttag-ordo">Modification traitement</span>
+                </div>
+              </div>
+
+              <div class="timeline-item">
+                <div class="timeline-left">
+                  <div class="timeline-icon-wrap ic-hospit">🏥</div>
+                  <div class="timeline-date">fév.<br>2026</div>
+                </div>
+                <div class="timeline-body">
+                  <div class="timeline-title">Consultation diabétologie — Dr. Renard</div>
+                  <div class="timeline-sub">Avis spécialisé demandé suite à déséquilibre. Recommandation : renforcer antidiabétiques. Pas d'indication insuline à ce stade.</div>
+                  <span class="timeline-tag ttag-hospit">Avis spécialisé</span>
+                </div>
+              </div>
+
+              <div class="timeline-item">
+                <div class="timeline-left">
+                  <div class="timeline-icon-wrap ic-consult">📋</div>
+                  <div class="timeline-date">déc.<br>2025</div>
+                </div>
+                <div class="timeline-body">
+                  <div class="timeline-title">Consultation bilan annuel</div>
+                  <div class="timeline-sub">HbA1c 7,2 % — dans cible. Pression artérielle stable 13/8. Fond d'œil normal. Microalbuminurie négative. Bonne année.</div>
+                  <span class="timeline-tag ttag-consult">Bilan annuel</span>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Right column -->
+      <div class="right-col">
+
+        <!-- Traitements en cours -->
+        <div class="card">
+          <div class="card-header">
+            <span>💊</span>
+            <span class="card-header-title">Traitements actifs</span>
+            <span class="card-header-sub">7</span>
+          </div>
+          <div class="card-body" style="padding: 8px 16px;">
+            <div class="treatment-item">
+              <div class="treatment-dot"></div>
+              <div>
+                <div class="treatment-name">Metformine 1000 mg</div>
+                <div class="treatment-dose">3×/j · Diabète</div>
+              </div>
+              <div class="treatment-since">dep. 2016</div>
+            </div>
+            <div class="treatment-item">
+              <div class="treatment-dot"></div>
+              <div>
+                <div class="treatment-name">Empagliflozine 10 mg</div>
+                <div class="treatment-dose">1×/j · Diabète</div>
+              </div>
+              <div class="treatment-since">mars 26</div>
+            </div>
+            <div class="treatment-item">
+              <div class="treatment-dot"></div>
+              <div>
+                <div class="treatment-name">Ramipril 5 mg</div>
+                <div class="treatment-dose">1×/j · HTA</div>
+              </div>
+              <div class="treatment-since">dep. 2014</div>
+            </div>
+            <div class="treatment-item">
+              <div class="treatment-dot"></div>
+              <div>
+                <div class="treatment-name">Amlodipine 5 mg</div>
+                <div class="treatment-dose">1×/j · HTA</div>
+              </div>
+              <div class="treatment-since">dep. 2020</div>
+            </div>
+            <div class="treatment-item">
+              <div class="treatment-dot"></div>
+              <div>
+                <div class="treatment-name">Rosuvastatine 10 mg</div>
+                <div class="treatment-dose">1×/j · Dyslipidémie</div>
+              </div>
+              <div class="treatment-since">dep. 2017</div>
+            </div>
+            <div class="treatment-item">
+              <div class="treatment-dot"></div>
+              <div>
+                <div class="treatment-name">Aspirine 100 mg</div>
+                <div class="treatment-dose">1×/j · Prévention</div>
+              </div>
+              <div class="treatment-since">dep. 2018</div>
+            </div>
+            <div class="treatment-item">
+              <div class="treatment-dot"></div>
+              <div>
+                <div class="treatment-name">Vitamine D 100 000 UI</div>
+                <div class="treatment-dose">1×/trimestre</div>
+              </div>
+              <div class="treatment-since">dep. 2022</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mes notes -->
+        <div class="card">
+          <div class="card-header">
+            <span>📝</span>
+            <span class="card-header-title">Mes notes</span>
+          </div>
+          <div class="card-body" style="padding: 8px 16px;">
+            <div class="note-item">
+              <div class="note-date">18 juin 2026</div>
+              <div class="note-text">HbA1c remonte depuis arrêt sport en hiver. Discuté observance — patient honnête sur les écarts. Revoir si HbA1c > 9 → discuter insuline.</div>
+              <span class="note-tag ntag-attention">Seuil décision</span>
+            </div>
+            <div class="note-item">
+              <div class="note-date">fév. 2026</div>
+              <div class="note-text">Patient réticent à l'insuline — peur des injections + contrainte pro (commercial itinérant). Privilégier oral si possible.</div>
+              <span class="note-tag ntag-preference">Préférence patient</span>
+            </div>
+            <div class="note-item">
+              <div class="note-date">déc. 2025</div>
+              <div class="note-text">Épouse présente à la consultation. Inquiète de l'évolution. Bonne alliance thérapeutique en couple.</div>
+              <span class="note-tag ntag-social">Contexte social</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="card">
+          <div class="card-header">
+            <span>⚡</span>
+            <span class="card-header-title">Actions</span>
+          </div>
+          <div class="card-body">
+            <div class="action-row">
+              <button class="btn btn-primary">Nouvelle consultation</button>
+              <button class="btn btn-secondary">Rédiger une ordonnance</button>
+              <button class="btn btn-secondary">Demander un bilan</button>
+              <button class="btn btn-secondary">Adresser un spécialiste</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<div class="probe-badge">Sonde de recherche v1 — Dossier patient — Non validé</div>
+
+</body>
+</html>

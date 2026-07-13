@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MedLink — Sonde Dashboard v1</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f4f5f7;
+    --surface: #ffffff;
+    --sidebar-bg: #1a2233;
+    --sidebar-text: #8fa3bf;
+    --sidebar-active: #ffffff;
+    --sidebar-active-bg: #2d3f5c;
+    --accent: #2563eb;
+    --alert: #dc2626;
+    --alert-bg: #fef2f2;
+    --alert-border: #fecaca;
+    --warn: #d97706;
+    --warn-bg: #fffbeb;
+    --warn-border: #fde68a;
+    --ok: #16a34a;
+    --ok-bg: #f0fdf4;
+    --text: #111827;
+    --text-muted: #6b7280;
+    --text-subtle: #9ca3af;
+    --border: #e5e7eb;
+    --radius: 8px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.5;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ── Top bar ── */
+  .topbar {
+    background: var(--sidebar-bg);
+    padding: 0 20px;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-shrink: 0;
+  }
+  .topbar-logo { font-weight: 700; font-size: 16px; color: #ffffff; letter-spacing: -0.3px; }
+  .topbar-logo span { color: #60a5fa; }
+  .topbar-sep { width: 1px; height: 20px; background: #2d3f5c; }
+  .topbar-greeting { color: #c9d8ed; font-size: 14px; }
+  .topbar-greeting strong { color: white; }
+  .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 16px; }
+  .topbar-date { font-size: 12px; color: #8fa3bf; }
+  .topbar-avatar {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: #2d3f5c; color: #60a5fa;
+    font-weight: 700; font-size: 12px;
+    display: flex; align-items: center; justify-content: center;
+    border: 2px solid #3b5279;
+  }
+
+  /* ── Layout ── */
+  .layout { display: flex; flex: 1; overflow: hidden; }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    width: 200px;
+    background: var(--sidebar-bg);
+    flex-shrink: 0;
+    padding: 16px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    overflow-y: auto;
+    border-top: 1px solid #243349;
+  }
+  .sidebar-section-label {
+    font-size: 10px; font-weight: 600;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    color: #4a5e7a; padding: 12px 16px 4px;
+  }
+  .sidebar-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 16px; color: var(--sidebar-text);
+    cursor: pointer; font-size: 13px;
+  }
+  .sidebar-item:hover { background: rgba(255,255,255,0.05); color: #c9d8ed; }
+  .sidebar-item.active { background: var(--sidebar-active-bg); color: white; font-weight: 500; }
+  .sidebar-item .icon { font-size: 15px; opacity: 0.8; }
+  .sidebar-badge {
+    margin-left: auto; background: var(--alert);
+    color: white; font-size: 10px; font-weight: 700;
+    padding: 1px 6px; border-radius: 10px;
+  }
+  .sidebar-badge-warn {
+    margin-left: auto; background: var(--warn);
+    color: white; font-size: 10px; font-weight: 700;
+    padding: 1px 6px; border-radius: 10px;
+  }
+
+  /* ── Main ── */
+  .main {
+    flex: 1; overflow-y: auto;
+    padding: 20px;
+    display: flex; flex-direction: column; gap: 16px;
+  }
+
+  /* ── Stat cards ── */
+  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .stat-card.alert-stat { border-left: 4px solid var(--alert); }
+  .stat-card.warn-stat  { border-left: 4px solid var(--warn); }
+  .stat-card.ok-stat    { border-left: 4px solid var(--ok); }
+  .stat-card.info-stat  { border-left: 4px solid var(--accent); }
+  .stat-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); font-weight: 600; }
+  .stat-value { font-size: 28px; font-weight: 700; line-height: 1; }
+  .stat-value.red   { color: var(--alert); }
+  .stat-value.amber { color: var(--warn); }
+  .stat-value.green { color: var(--ok); }
+  .stat-value.blue  { color: var(--accent); }
+  .stat-sub { font-size: 11px; color: var(--text-subtle); margin-top: 2px; }
+
+  /* ── Two column layout ── */
+  .two-col { display: grid; grid-template-columns: 1fr 340px; gap: 16px; align-items: start; }
+
+  /* ── Card ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .card-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .card-header-title { font-weight: 600; font-size: 13px; }
+  .card-header-sub { font-size: 12px; color: var(--text-muted); margin-left: auto; }
+  .card-body { padding: 0; }
+
+  /* ── Schedule ── */
+  .schedule-item {
+    display: flex; align-items: stretch;
+    padding: 0;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+  .schedule-item:last-child { border-bottom: none; }
+  .schedule-item:hover { background: #f9fafb; }
+  .schedule-item.done { opacity: 0.5; }
+  .schedule-item.current { background: #eff6ff; border-left: 3px solid var(--accent); }
+  .schedule-item.alert-row { background: var(--alert-bg); border-left: 3px solid var(--alert); }
+
+  .schedule-time {
+    flex-shrink: 0; width: 64px;
+    padding: 12px 8px 12px 16px;
+    font-size: 13px; font-weight: 600;
+    color: var(--text-muted);
+    display: flex; align-items: center;
+  }
+  .schedule-item.current .schedule-time { color: var(--accent); }
+  .schedule-item.done .schedule-time { text-decoration: line-through; }
+
+  .schedule-body { flex: 1; padding: 12px 8px; }
+  .schedule-name { font-weight: 600; font-size: 13px; }
+  .schedule-meta { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .schedule-reason {
+    display: inline-block; margin-top: 5px;
+    font-size: 11px; padding: 2px 7px; border-radius: 4px; font-weight: 500;
+  }
+  .reason-suivi    { background: #dbeafe; color: #1d4ed8; }
+  .reason-renouvellement { background: #ede9fe; color: #5b21b6; }
+  .reason-urgence  { background: var(--alert-bg); color: var(--alert); }
+  .reason-premier  { background: #d1fae5; color: #065f46; }
+  .reason-bilan    { background: #fef3c7; color: #92400e; }
+
+  .schedule-right {
+    flex-shrink: 0; padding: 12px 16px;
+    display: flex; flex-direction: column; align-items: flex-end; justify-content: center; gap: 4px;
+  }
+  .schedule-age { font-size: 12px; color: var(--text-subtle); }
+  .alert-dot {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--alert);
+  }
+  .done-check { color: var(--ok); font-size: 14px; }
+  .current-tag {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.06em; color: var(--accent);
+    background: #dbeafe; padding: 2px 6px; border-radius: 4px;
+  }
+
+  /* ── Right column ── */
+  .right-col { display: flex; flex-direction: column; gap: 12px; }
+
+  /* ── Alert list ── */
+  .alert-item {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 12px 16px; border-bottom: 1px solid var(--border);
+    cursor: pointer; transition: background 0.1s;
+  }
+  .alert-item:last-child { border-bottom: none; }
+  .alert-item:hover { background: #fafafa; }
+  .alert-icon { font-size: 18px; flex-shrink: 0; }
+  .alert-content { flex: 1; }
+  .alert-title { font-weight: 600; font-size: 13px; }
+  .alert-title.red   { color: var(--alert); }
+  .alert-title.amber { color: var(--warn); }
+  .alert-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .alert-time { font-size: 11px; color: var(--text-subtle); flex-shrink: 0; margin-top: 2px; }
+
+  /* ── Pending actions ── */
+  .pending-item {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 10px 16px; border-bottom: 1px solid var(--border);
+  }
+  .pending-item:last-child { border-bottom: none; }
+  .pending-check {
+    width: 16px; height: 16px; border-radius: 4px;
+    border: 2px solid var(--border); flex-shrink: 0; margin-top: 2px;
+    cursor: pointer;
+  }
+  .pending-text { font-size: 13px; flex: 1; }
+  .pending-patient { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  .pending-urgent { color: var(--alert); font-size: 11px; font-weight: 600; margin-left: auto; flex-shrink: 0; }
+
+  /* ── Probe badge ── */
+  .probe-badge {
+    position: fixed; bottom: 12px; right: 12px;
+    background: #1a2233; color: #8fa3bf;
+    font-size: 10px; padding: 5px 10px; border-radius: 20px;
+    pointer-events: none; z-index: 100;
+  }
+
+  /* ── Section title ── */
+  .section-title {
+    font-size: 12px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.07em; color: var(--text-subtle);
+    padding: 4px 0 8px;
+  }
+</style>
+</head>
+<body>
+
+<!-- Top bar -->
+<div class="topbar">
+  <div class="topbar-logo">Med<span>Link</span></div>
+  <div class="topbar-sep"></div>
+  <div class="topbar-greeting">Bonjour, <strong>Dr. Durand</strong></div>
+  <div class="topbar-right">
+    <div class="topbar-date">Mardi 7 juillet 2026 · 08h45</div>
+    <div class="topbar-avatar">AD</div>
+  </div>
+</div>
+
+<div class="layout">
+
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="sidebar-section-label">Navigation</div>
+    <div class="sidebar-item active"><span class="icon">🏠</span> Mon espace</div>
+    <div class="sidebar-item"><span class="icon">📅</span> Planning</div>
+    <div class="sidebar-item">
+      <span class="icon">🔴</span> Alertes
+      <span class="sidebar-badge">3</span>
+    </div>
+    <div class="sidebar-item">
+      <span class="icon">💬</span> Messages
+      <span class="sidebar-badge-warn">5</span>
+    </div>
+
+    <div class="sidebar-section-label">Patients</div>
+    <div class="sidebar-item"><span class="icon">🔍</span> Rechercher</div>
+    <div class="sidebar-item"><span class="icon">⭐</span> Favoris</div>
+
+    <div class="sidebar-section-label">Travail</div>
+    <div class="sidebar-item"><span class="icon">📝</span> À faire</div>
+    <div class="sidebar-item"><span class="icon">📄</span> Ordonnances</div>
+    <div class="sidebar-item"><span class="icon">📬</span> Résultats</div>
+  </nav>
+
+  <!-- Main -->
+  <main class="main">
+
+    <!-- Stats -->
+    <div class="stats-row">
+      <div class="stat-card info-stat">
+        <div class="stat-label">Patients aujourd'hui</div>
+        <div class="stat-value blue">12</div>
+        <div class="stat-sub">2 terminés · 1 en cours</div>
+      </div>
+      <div class="stat-card alert-stat">
+        <div class="stat-label">Résultats anormaux</div>
+        <div class="stat-value red">3</div>
+        <div class="stat-sub">À traiter avant les consultations</div>
+      </div>
+      <div class="stat-card warn-stat">
+        <div class="stat-label">Messages non lus</div>
+        <div class="stat-value amber">5</div>
+        <div class="stat-sub">1 urgent</div>
+      </div>
+      <div class="stat-card ok-stat">
+        <div class="stat-label">Renouvellements</div>
+        <div class="stat-value green">4</div>
+        <div class="stat-sub">Demandes en attente</div>
+      </div>
+    </div>
+
+    <!-- Two columns -->
+    <div class="two-col">
+
+      <!-- Schedule -->
+      <div>
+        <div class="section-title">Planning du jour</div>
+        <div class="card">
+          <div class="card-body">
+
+            <div class="schedule-item done">
+              <div class="schedule-time">08h00</div>
+              <div class="schedule-body">
+                <div class="schedule-name">Jean-Pierre Moreau</div>
+                <div class="schedule-meta">72 ans · Médecin traitant</div>
+                <span class="schedule-reason reason-suivi">Suivi HTA</span>
+              </div>
+              <div class="schedule-right">
+                <div class="schedule-age">72 ans</div>
+                <div class="done-check">✓</div>
+              </div>
+            </div>
+
+            <div class="schedule-item done">
+              <div class="schedule-time">08h30</div>
+              <div class="schedule-body">
+                <div class="schedule-name">Camille Bernard</div>
+                <div class="schedule-meta">29 ans · Médecin traitant</div>
+                <span class="schedule-reason reason-bilan">Bilan annuel</span>
+              </div>
+              <div class="schedule-right">
+                <div class="schedule-age">29 ans</div>
+                <div class="done-check">✓</div>
+              </div>
+            </div>
+
+            <div class="schedule-item current">
+              <div class="schedule-time">09h00</div>
+              <div class="schedule-body">
+                <div class="schedule-name">Sophie Martin</div>
+                <div class="schedule-meta">38 ans · Médecin traitant</div>
+                <span class="schedule-reason reason-suivi">Suivi hypothyroïdie — résultat anormal</span>
+              </div>
+              <div class="schedule-right">
+                <div class="current-tag">En cours</div>
+                <div class="alert-dot"></div>
+              </div>
+            </div>
+
+            <div class="schedule-item">
+              <div class="schedule-time">09h30</div>
+              <div class="schedule-body">
+                <div class="schedule-name">Marc Lefebvre</div>
+                <div class="schedule-meta">55 ans · Médecin traitant</div>
+                <span class="schedule-reason reason-renouvellement">Renouvellement ordonnance</span>
+              </div>
+              <div class="schedule-right">
+                <div class="schedule-age">55 ans</div>
+              </div>
+            </div>
+
+            <div class="schedule-item">
+              <div class="schedule-time">10h00</div>
+              <div class="schedule-body">
+                <div class="schedule-name">Isabelle Petit</div>
+                <div class="schedule-meta">44 ans · Médecin traitant</div>
+                <span class="schedule-reason reason-suivi">Suivi diabète type 2</span>
+              </div>
+              <div class="schedule-right">
+                <div class="schedule-age">44 ans</div>
+              </div>
+            </div>
+
+            <div class="schedule-item alert-row">
+              <div class="schedule-time">10h30</div>
+              <div class="schedule-body">
+                <div class="schedule-name">Thomas Garnier</div>
+                <div class="schedule-meta">67 ans · Médecin traitant</div>
+                <span class="schedule-reason reason-urgence">Douleur thoracique — ajout urgent</span>
+              </div>
+              <div class="schedule-right">
+                <div class="schedule-age">67 ans</div>
+                <div class="alert-dot"></div>
+              </div>
+            </div>
+
+            <div class="schedule-item">
+              <div class="schedule-time">11h00</div>
+              <div class="schedule-body">
+                <div class="schedule-name">Lucie Fontaine</div>
+                <div class="schedule-meta">32 ans · Médecin traitant</div>
+                <span class="schedule-reason reason-premier">Premier contact</span>
+              </div>
+              <div class="schedule-right">
+                <div class="schedule-age">32 ans</div>
+              </div>
+            </div>
+
+            <div class="schedule-item" style="opacity:0.6">
+              <div class="schedule-time" style="color:var(--text-subtle)">+ 5 autres</div>
+              <div class="schedule-body">
+                <div class="schedule-meta">Après-midi · 14h00 – 18h30</div>
+              </div>
+              <div class="schedule-right">
+                <div style="font-size:12px; color:var(--accent); cursor:pointer;">Voir →</div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- Right column -->
+      <div class="right-col">
+
+        <!-- Alerts -->
+        <div class="section-title">Nécessite attention</div>
+        <div class="card">
+          <div class="card-body">
+
+            <div class="alert-item">
+              <div class="alert-icon">🔴</div>
+              <div class="alert-content">
+                <div class="alert-title red">TSH anormale — Sophie Martin</div>
+                <div class="alert-sub">8,2 mUI/L · Norme : 0,4 – 4,0 · Reçu ce matin</div>
+              </div>
+              <div class="alert-time">08h32</div>
+            </div>
+
+            <div class="alert-item">
+              <div class="alert-icon">🔴</div>
+              <div class="alert-content">
+                <div class="alert-title red">INR élevé — Robert Chauvin</div>
+                <div class="alert-sub">INR 4,2 · Patient sous AVK · Consultation prévue jeudi</div>
+              </div>
+              <div class="alert-time">hier</div>
+            </div>
+
+            <div class="alert-item">
+              <div class="alert-icon">🟡</div>
+              <div class="alert-content">
+                <div class="alert-title amber">Glycémie à surveiller — Isabelle Petit</div>
+                <div class="alert-sub">HbA1c 8,1% · En hausse depuis 6 mois</div>
+              </div>
+              <div class="alert-time">hier</div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Pending -->
+        <div class="section-title">À faire</div>
+        <div class="card">
+          <div class="card-body">
+
+            <div class="pending-item">
+              <div class="pending-check"></div>
+              <div>
+                <div class="pending-text">Rappeler Robert Chauvin — INR</div>
+                <div class="pending-patient">Avant la consultation de jeudi</div>
+              </div>
+              <div class="pending-urgent">Urgent</div>
+            </div>
+
+            <div class="pending-item">
+              <div class="pending-check"></div>
+              <div>
+                <div class="pending-text">Renouveler ordonnance Marc Lefebvre</div>
+                <div class="pending-patient">Antihypertenseurs · Demande reçue lundi</div>
+              </div>
+            </div>
+
+            <div class="pending-item">
+              <div class="pending-check"></div>
+              <div>
+                <div class="pending-text">Courrier retour hospit. — Mme Rousseau</div>
+                <div class="pending-patient">Chirurgie orthopédique · 28 juin</div>
+              </div>
+            </div>
+
+            <div class="pending-item">
+              <div class="pending-check"></div>
+              <div>
+                <div class="pending-text">Adresser Lucie Fontaine — dermatologue</div>
+                <div class="pending-patient">Nouveau patient · Consultation ce matin</div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<div class="probe-badge">Sonde de recherche v1 — Dashboard — Non validé</div>
+
+</body>
+</html>

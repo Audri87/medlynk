@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MedLink — Sonde Consultation Workspace v1</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f4f5f7;
+    --surface: #ffffff;
+    --sidebar-bg: #1a2233;
+    --sidebar-text: #8fa3bf;
+    --sidebar-active-bg: #2d3f5c;
+    --accent: #2563eb;
+    --accent-light: #eff6ff;
+    --alert: #dc2626;
+    --alert-bg: #fef2f2;
+    --warn: #d97706;
+    --warn-bg: #fffbeb;
+    --ok: #16a34a;
+    --ok-bg: #f0fdf4;
+    --purple: #7c3aed;
+    --purple-bg: #ede9fe;
+    --consultation: #0891b2;
+    --consultation-bg: #ecfeff;
+    --consultation-border: #a5f3fc;
+    --text: #111827;
+    --text-muted: #6b7280;
+    --text-subtle: #9ca3af;
+    --border: #e5e7eb;
+    --radius: 8px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.5;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ── Top bar ── */
+  .topbar {
+    background: var(--sidebar-bg);
+    padding: 0 20px;
+    height: 52px;
+    display: flex; align-items: center; gap: 16px;
+    flex-shrink: 0;
+  }
+  .topbar-logo { font-weight: 700; font-size: 16px; color: #fff; }
+  .topbar-logo span { color: #60a5fa; }
+  .topbar-sep { width: 1px; height: 20px; background: #2d3f5c; }
+  .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+  .topbar-practitioner { font-size: 13px; color: #8fa3bf; }
+  .topbar-avatar {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: #2d3f5c; color: #60a5fa;
+    font-weight: 700; font-size: 12px;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  /* ── Patient safety bar ── */
+  .safety-bar {
+    background: var(--consultation-bg);
+    border-bottom: 2px solid var(--consultation-border);
+    padding: 10px 20px;
+    display: flex; align-items: center; gap: 16px;
+    flex-shrink: 0;
+  }
+  .safety-bar-status {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--consultation);
+    color: white; font-size: 11px; font-weight: 700;
+    padding: 4px 10px; border-radius: 20px;
+    text-transform: uppercase; letter-spacing: 0.06em;
+    flex-shrink: 0;
+  }
+  .safety-bar-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: #67e8f9; animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; } 50% { opacity: 0.4; }
+  }
+  .safety-bar-patient { font-weight: 700; font-size: 15px; }
+  .safety-bar-meta { font-size: 13px; color: var(--text-muted); }
+  .safety-bar-sep { width: 1px; height: 16px; background: var(--border); }
+  .safety-pill {
+    font-size: 11px; font-weight: 500; padding: 2px 8px;
+    border-radius: 12px; flex-shrink: 0;
+  }
+  .pill-alert   { background: var(--alert-bg); color: var(--alert); border: 1px solid #fecaca; }
+  .pill-warn    { background: var(--warn-bg); color: var(--warn); border: 1px solid #fde68a; }
+  .pill-neutral { background: #f3f4f6; color: var(--text-muted); border: 1px solid var(--border); }
+  .safety-bar-timer {
+    margin-left: auto; font-size: 12px; color: var(--text-subtle);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ── Mode tabs ── */
+  .mode-tabs {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 20px;
+    display: flex; gap: 0;
+    flex-shrink: 0;
+  }
+  .mode-tab {
+    padding: 12px 20px; font-size: 13px; font-weight: 500;
+    color: var(--text-muted); cursor: pointer;
+    border-bottom: 2px solid transparent; margin-bottom: -1px;
+  }
+  .mode-tab:hover { color: var(--text); }
+  .mode-tab.active { color: var(--consultation); border-bottom-color: var(--consultation); }
+
+  /* ── Layout ── */
+  .layout { display: flex; flex: 1; overflow: hidden; }
+
+  /* ── Main ── */
+  .main { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+
+  /* ── Toast notification ── */
+  .toast {
+    position: fixed; top: 16px; right: 16px; z-index: 200;
+    background: var(--surface); border: 1px solid var(--border);
+    border-left: 4px solid var(--warn);
+    border-radius: var(--radius); padding: 12px 16px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    width: 320px; display: flex; flex-direction: column; gap: 8px;
+  }
+  .toast-title { font-weight: 600; font-size: 13px; color: var(--warn); }
+  .toast-sub { font-size: 12px; color: var(--text-muted); }
+  .toast-actions { display: flex; gap: 8px; }
+  .toast-btn {
+    padding: 5px 12px; border-radius: 5px; font-size: 12px;
+    font-weight: 500; cursor: pointer; border: none;
+  }
+  .toast-btn-primary { background: var(--accent); color: white; }
+  .toast-btn-secondary { background: #f3f4f6; color: var(--text); border: 1px solid var(--border); }
+  .toast-close {
+    position: absolute; top: 8px; right: 10px;
+    color: var(--text-subtle); cursor: pointer; font-size: 16px;
+  }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden;
+  }
+  .card-header {
+    padding: 12px 16px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .card-header-title { font-weight: 600; font-size: 13px; }
+  .card-header-sub { font-size: 12px; color: var(--text-muted); margin-left: auto; }
+  .card-body { padding: 16px; }
+
+  /* ── Durante view ── */
+  .durante-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; height: 100%; }
+
+  .context-panel { display: flex; flex-direction: column; gap: 12px; }
+
+  .context-item {
+    padding: 10px 0; border-bottom: 1px solid var(--border);
+    display: flex; flex-direction: column; gap: 3px;
+  }
+  .context-item:last-child { border-bottom: none; }
+  .context-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-subtle); font-weight: 600; }
+  .context-value { font-size: 13px; }
+  .context-value.alert { color: var(--alert); font-weight: 600; }
+  .context-value.muted { color: var(--text-muted); }
+
+  .capture-panel { display: flex; flex-direction: column; gap: 12px; }
+  .capture-area {
+    flex: 1; border: 2px dashed var(--border); border-radius: var(--radius);
+    padding: 16px; resize: none;
+    font-family: inherit; font-size: 14px; line-height: 1.6;
+    color: var(--text); background: #fafafa;
+    min-height: 260px; outline: none;
+    transition: border-color 0.2s;
+  }
+  .capture-area:focus { border-color: var(--consultation); border-style: solid; background: white; }
+  .capture-area::placeholder { color: var(--text-subtle); }
+  .capture-hint { font-size: 11px; color: var(--text-subtle); display: flex; align-items: center; gap: 4px; }
+
+  /* ── Action bar ── */
+  .action-bar {
+    background: var(--surface); border-top: 1px solid var(--border);
+    padding: 12px 20px; display: flex; align-items: center; gap: 12px;
+    flex-shrink: 0;
+  }
+  .btn {
+    padding: 9px 18px; border-radius: 6px;
+    font-size: 13px; font-weight: 500; cursor: pointer;
+    border: none; transition: opacity 0.15s;
+  }
+  .btn:hover { opacity: 0.85; }
+  .btn-primary      { background: var(--accent); color: white; }
+  .btn-consultation { background: var(--consultation); color: white; }
+  .btn-secondary    { background: #f3f4f6; color: var(--text); border: 1px solid var(--border); }
+  .btn-ghost        { background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
+  .action-bar-left  { display: flex; gap: 8px; }
+  .action-bar-right { margin-left: auto; display: flex; gap: 8px; }
+
+  /* ── Clôture view ── */
+  .cloture-layout { display: grid; grid-template-columns: 1fr 280px; gap: 16px; align-items: start; }
+
+  .note-editor {
+    width: 100%; border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 14px; font-family: inherit; font-size: 14px; line-height: 1.7;
+    color: var(--text); resize: vertical; min-height: 200px; outline: none;
+    transition: border-color 0.2s;
+  }
+  .note-editor:focus { border-color: var(--accent); }
+
+  .cloture-actions { display: flex; flex-direction: column; gap: 8px; }
+  .action-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; border: 1px solid var(--border);
+    border-radius: var(--radius); cursor: pointer;
+    background: var(--surface); transition: background 0.1s;
+    font-size: 13px;
+  }
+  .action-item:hover { background: #f9fafb; }
+  .action-item-icon { font-size: 18px; }
+  .action-item-label { font-weight: 500; }
+  .action-item-sub { font-size: 11px; color: var(--text-muted); }
+
+  /* ── Fin de journée ── */
+  .eod-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 16px; border-bottom: 1px solid var(--border);
+    cursor: pointer; transition: background 0.1s;
+  }
+  .eod-item:last-child { border-bottom: none; }
+  .eod-item:hover { background: #f9fafb; }
+  .eod-circle {
+    width: 16px; height: 16px; border-radius: 50%;
+    border: 2px solid var(--border); flex-shrink: 0;
+  }
+  .eod-time { font-size: 12px; color: var(--text-subtle); width: 40px; flex-shrink: 0; }
+  .eod-name { font-weight: 600; font-size: 13px; flex: 1; }
+  .eod-reason { font-size: 12px; color: var(--text-muted); }
+  .eod-btn {
+    font-size: 11px; font-weight: 600; color: var(--accent);
+    padding: 3px 8px; border: 1px solid #bfdbfe; border-radius: 4px;
+    background: var(--accent-light); white-space: nowrap; flex-shrink: 0;
+  }
+
+  /* ── View switcher (demo) ── */
+  .view { display: none; }
+  .view.active { display: flex; flex-direction: column; gap: 16px; flex: 1; }
+
+  /* ── Probe badge ── */
+  .probe-badge {
+    position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%);
+    background: #1a2233; color: #8fa3bf;
+    font-size: 10px; padding: 5px 14px; border-radius: 20px;
+    pointer-events: none; z-index: 100;
+  }
+</style>
+</head>
+<body>
+
+<!-- Top bar -->
+<div class="topbar">
+  <div class="topbar-logo">Med<span>Link</span></div>
+  <div class="topbar-sep"></div>
+  <div class="topbar-right">
+    <div class="topbar-practitioner">Dr. A. Durand</div>
+    <div class="topbar-avatar">AD</div>
+  </div>
+</div>
+
+<!-- Patient safety bar — always visible -->
+<div class="safety-bar">
+  <div class="safety-bar-status">
+    <div class="safety-bar-dot"></div>
+    En consultation
+  </div>
+  <div class="safety-bar-patient">Sophie Martin</div>
+  <div class="safety-bar-meta">38 ans · Suivi hypothyroïdie</div>
+  <div class="safety-bar-sep"></div>
+  <span class="safety-pill pill-alert">⚠ Allergie pénicilline</span>
+  <span class="safety-pill pill-warn">TSH 8,2 mUI/L ↑</span>
+  <span class="safety-pill pill-neutral">Levothyrox 75 µg</span>
+  <span class="safety-pill pill-neutral">Contraception orale</span>
+  <div class="safety-bar-timer">⏱ 08 min</div>
+</div>
+
+<!-- Mode tabs -->
+<div class="mode-tabs">
+  <div class="mode-tab active" onclick="showView('durante')">Pendant la consultation</div>
+  <div class="mode-tab" onclick="showView('cloture')">Clôture</div>
+  <div class="mode-tab" onclick="showView('eod')">Fin de journée</div>
+</div>
+
+<!-- Layout -->
+<div class="layout">
+  <div class="main">
+
+    <!-- ═══════════════════════════════════════
+         VIEW 1 — PENDANT
+    ════════════════════════════════════════ -->
+    <div class="view active" id="view-durante">
+
+      <div class="durante-grid">
+
+        <!-- Contexte patient (lecture seule) -->
+        <div class="card">
+          <div class="card-header">
+            <span>📋</span>
+            <span class="card-header-title">Contexte patient</span>
+            <span class="card-header-sub">Lecture seule</span>
+          </div>
+          <div class="card-body">
+            <div class="context-item">
+              <div class="context-label">Dernière consultation</div>
+              <div class="context-value">14 janv. 2026 — Suivi hypothyroïdie</div>
+              <div class="context-value muted">TSH à 5,3 — maintien Levothyrox 75 µg. Recontrôle dans 6 mois.</div>
+            </div>
+            <div class="context-item">
+              <div class="context-label">Résultat récent</div>
+              <div class="context-value alert">TSH 8,2 mUI/L — reçu ce matin</div>
+              <div class="context-value muted">Norme : 0,4 – 4,0 · Tendance à la hausse depuis oct. 25</div>
+            </div>
+            <div class="context-item">
+              <div class="context-label">Traitements actifs</div>
+              <div class="context-value">Levothyrox 75 µg · Contraception orale · Vitamine D</div>
+            </div>
+            <div class="context-item">
+              <div class="context-label">Antécédents clés</div>
+              <div class="context-value">Hypothyroïdie dep. 2019 · Antécédent maternel Hashimoto</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Capture rapide -->
+        <div class="card" style="display:flex; flex-direction:column;">
+          <div class="card-header">
+            <span>✏️</span>
+            <span class="card-header-title">Notes rapides</span>
+            <span class="card-header-sub">Optionnel</span>
+          </div>
+          <div class="card-body" style="flex:1; display:flex; flex-direction:column; gap:10px;">
+            <textarea class="capture-area" placeholder="Écrivez librement...&#10;&#10;Ce que dit le patient, vos observations, vos questions...&#10;&#10;Aucune structure imposée.">Patiente mentionne fatigue accrue depuis 3 semaines, notamment le matin.
+Pas de prise de poids notable.
+Dit avoir été irrégulière dans la prise du médicament (voyage en juin).</textarea>
+            <div class="capture-hint">
+              <span>💡</span> Ces notes seront reprises dans la clôture
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- ═══════════════════════════════════════
+         VIEW 2 — CLÔTURE
+    ════════════════════════════════════════ -->
+    <div class="view" id="view-cloture">
+
+      <div class="cloture-layout">
+
+        <!-- Note + actions principales -->
+        <div style="display:flex; flex-direction:column; gap:12px;">
+          <div class="card">
+            <div class="card-header">
+              <span>📝</span>
+              <span class="card-header-title">Note de consultation</span>
+              <span class="card-header-sub">Texte libre · Reprise depuis la capture</span>
+            </div>
+            <div class="card-body">
+              <textarea class="note-editor">Patiente mentionne fatigue accrue depuis 3 semaines, notamment le matin. Pas de prise de poids notable. Reconnaît irrégularités de prise en juin (voyage).
+
+TSH à 8,2 mUI/L — nettement au-dessus de la norme. Tendance à la hausse confirmée sur 18 mois.
+
+Décision : augmentation Levothyrox 75 µg → 100 µg. Bilan de contrôle TSH dans 6 semaines.</textarea>
+            </div>
+          </div>
+
+          <!-- Quick close option -->
+          <div style="display:flex; align-items:center; gap:8px; padding: 0 4px;">
+            <input type="checkbox" id="no-finding" style="width:16px; height:16px; cursor:pointer;">
+            <label for="no-finding" style="font-size:13px; color:var(--text-muted); cursor:pointer;">
+              Consultation sans particularité — clôturer sans note
+            </label>
+          </div>
+        </div>
+
+        <!-- Actions latérales -->
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.07em; color:var(--text-subtle);">Actions (optionnelles)</div>
+
+          <div class="action-item">
+            <div class="action-item-icon">💊</div>
+            <div>
+              <div class="action-item-label">Ordonnance</div>
+              <div class="action-item-sub">Modifier ou créer</div>
+            </div>
+          </div>
+
+          <div class="action-item">
+            <div class="action-item-icon">📅</div>
+            <div>
+              <div class="action-item-label">Prochain RDV</div>
+              <div class="action-item-sub">Dans 6 semaines</div>
+            </div>
+          </div>
+
+          <div class="action-item">
+            <div class="action-item-icon">🧪</div>
+            <div>
+              <div class="action-item-label">Bilan à prévoir</div>
+              <div class="action-item-sub">TSH de contrôle</div>
+            </div>
+          </div>
+
+          <div class="action-item">
+            <div class="action-item-icon">📨</div>
+            <div>
+              <div class="action-item-label">Adresser</div>
+              <div class="action-item-sub">Spécialiste / courrier</div>
+            </div>
+          </div>
+
+          <div class="action-item">
+            <div class="action-item-icon">📝</div>
+            <div>
+              <div class="action-item-label">Mes notes perso</div>
+              <div class="action-item-sub">Visibles par moi seul</div>
+            </div>
+          </div>
+
+          <div style="margin-top:4px;">
+            <button class="btn btn-consultation" style="width:100%;">Enregistrer et fermer</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════
+         VIEW 3 — FIN DE JOURNÉE
+    ════════════════════════════════════════ -->
+    <div class="view" id="view-eod">
+
+      <div class="card">
+        <div class="card-header">
+          <span>🌙</span>
+          <span class="card-header-title">Consultations à clôturer</span>
+          <span class="card-header-sub">3 en attente · Mardi 7 juillet 2026</span>
+        </div>
+        <div class="card-body" style="padding:0;">
+
+          <div class="eod-item">
+            <div class="eod-circle"></div>
+            <div class="eod-time">09h00</div>
+            <div>
+              <div class="eod-name">Sophie Martin</div>
+              <div class="eod-reason">Suivi hypothyroïdie — résultat TSH anormal</div>
+            </div>
+            <div class="eod-btn">Clôturer →</div>
+          </div>
+
+          <div class="eod-item">
+            <div class="eod-circle"></div>
+            <div class="eod-time">10h30</div>
+            <div>
+              <div class="eod-name">Thomas Garnier</div>
+              <div class="eod-reason">Douleur thoracique — ajout urgent</div>
+            </div>
+            <div class="eod-btn">Clôturer →</div>
+          </div>
+
+          <div class="eod-item">
+            <div class="eod-circle"></div>
+            <div class="eod-time">11h00</div>
+            <div>
+              <div class="eod-name">Lucie Fontaine</div>
+              <div class="eod-reason">Premier contact</div>
+            </div>
+            <div class="eod-btn">Clôturer →</div>
+          </div>
+
+        </div>
+      </div>
+
+      <div style="display:flex; gap:8px; justify-content:flex-end;">
+        <button class="btn btn-ghost">Tout clôturer sans note</button>
+        <button class="btn btn-consultation">Commencer la revue</button>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+<!-- Action bar -->
+<div class="action-bar" id="action-bar-durante">
+  <div class="action-bar-left">
+    <button class="btn btn-secondary">← Dossier patient</button>
+  </div>
+  <div class="action-bar-right">
+    <button class="btn btn-ghost">Suspendre</button>
+    <button class="btn btn-consultation" onclick="showView('cloture')">Terminer la consultation →</button>
+  </div>
+</div>
+
+<!-- Toast notification (rappel contextuel) -->
+<div class="toast" id="toast">
+  <div class="toast-close" onclick="document.getElementById('toast').style.display='none'">×</div>
+  <div class="toast-title">⚠ Consultation non clôturée</div>
+  <div class="toast-sub">La consultation de Jean-Pierre Moreau (08h00) est toujours ouverte.</div>
+  <div class="toast-actions">
+    <button class="toast-btn toast-btn-primary">Clôturer maintenant</button>
+    <button class="toast-btn toast-btn-secondary" onclick="document.getElementById('toast').style.display='none'">Plus tard</button>
+  </div>
+</div>
+
+<div class="probe-badge">Sonde de recherche v1 — Consultation Workspace — Non validé</div>
+
+<script>
+  function showView(name) {
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('view-' + name).classList.add('active');
+    event.target.classList.add('active');
+
+    const bar = document.getElementById('action-bar-durante');
+    bar.style.display = name === 'durante' ? 'flex' : 'none';
+
+    // Show toast only on "durante" view
+    const toast = document.getElementById('toast');
+    toast.style.display = name === 'durante' ? 'block' : 'none';
+  }
+
+  // Hide toast initially after 3s on load
+  setTimeout(() => {}, 100);
+</script>
+
+</body>
+</html>

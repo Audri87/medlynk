@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MedLink — Dossier Patient v2</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f4f5f7;
+    --surface: #ffffff;
+    --sidebar-bg: #1a2233;
+    --sidebar-text: #8fa3bf;
+    --sidebar-active-bg: #2d3f5c;
+    --accent: #2563eb;
+    --alert: #dc2626;
+    --alert-bg: #fef2f2;
+    --alert-border: #fecaca;
+    --warn: #d97706;
+    --warn-bg: #fffbeb;
+    --ok: #16a34a;
+    --ok-bg: #f0fdf4;
+    --purple: #7c3aed;
+    --purple-bg: #ede9fe;
+    --text: #111827;
+    --text-muted: #6b7280;
+    --text-subtle: #9ca3af;
+    --border: #e5e7eb;
+    --radius: 8px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.5;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ── Top bar ── */
+  .topbar {
+    background: var(--sidebar-bg);
+    padding: 0 20px;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-shrink: 0;
+  }
+  .topbar-logo { font-weight: 700; font-size: 16px; color: #fff; letter-spacing: -0.3px; }
+  .topbar-logo span { color: #60a5fa; }
+  .topbar-sep { width: 1px; height: 20px; background: #2d3f5c; }
+  .topbar-back { color: #8fa3bf; font-size: 13px; cursor: pointer; }
+  .topbar-back:hover { color: #c9d8ed; }
+  .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 16px; }
+  .topbar-practitioner { font-size: 13px; color: #8fa3bf; }
+  .topbar-avatar {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: #2d3f5c; color: #60a5fa;
+    font-weight: 700; font-size: 12px;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  /* ── Patient banner ── */
+  .patient-banner {
+    background: var(--surface);
+    border-bottom: 2px solid var(--border);
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-shrink: 0;
+  }
+  .patient-avatar {
+    width: 48px; height: 48px; border-radius: 50%;
+    background: #dbeafe; color: var(--accent);
+    font-weight: 700; font-size: 17px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .patient-info { flex: 1; }
+  .patient-name { font-size: 17px; font-weight: 700; }
+  .patient-meta { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .patient-tags { display: flex; gap: 5px; margin-top: 6px; flex-wrap: wrap; }
+  .patient-tag {
+    font-size: 11px; font-weight: 500; padding: 2px 8px;
+    border-radius: 12px; border: 1px solid;
+  }
+  .tag-condition { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
+  .tag-alert     { background: var(--alert-bg); color: var(--alert); border-color: var(--alert-border); }
+  .tag-allergy   { background: #fff7ed; color: #c2410c; border-color: #fed7aa; }
+  .tag-new       { background: var(--ok-bg); color: var(--ok); border-color: #86efac; }
+
+  .patient-banner-right { display: flex; gap: 20px; flex-shrink: 0; }
+  .banner-stat { text-align: center; }
+  .banner-stat-value { font-size: 18px; font-weight: 700; }
+  .banner-stat-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-subtle); }
+
+  /* ── Layout ── */
+  .layout { display: flex; flex: 1; overflow: hidden; }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    width: 190px; background: var(--sidebar-bg);
+    flex-shrink: 0; padding: 16px 0;
+    display: flex; flex-direction: column; gap: 2px;
+    overflow-y: auto;
+  }
+  .sidebar-section-label {
+    font-size: 10px; font-weight: 600;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    color: #4a5e7a; padding: 12px 16px 4px;
+  }
+  .sidebar-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 16px; color: var(--sidebar-text);
+    cursor: pointer; font-size: 13px;
+  }
+  .sidebar-item:hover { background: rgba(255,255,255,0.05); color: #c9d8ed; }
+  .sidebar-item.active { background: var(--sidebar-active-bg); color: #fff; font-weight: 500; }
+  .sidebar-item .icon { font-size: 15px; opacity: 0.8; }
+  .sidebar-badge {
+    margin-left: auto; background: var(--alert); color: white;
+    font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 10px;
+  }
+
+  /* ── Main ── */
+  .main {
+    flex: 1; overflow-y: auto; padding: 20px;
+    display: flex; flex-direction: column; gap: 0;
+  }
+
+  /* ── Tab bar ── */
+  .tab-bar {
+    display: flex; gap: 0;
+    border-bottom: 2px solid var(--border);
+    margin-bottom: 16px;
+    flex-shrink: 0;
+  }
+  .tab {
+    padding: 10px 16px; font-size: 13px; font-weight: 500;
+    color: var(--text-muted); cursor: pointer;
+    border-bottom: 2px solid transparent; margin-bottom: -2px;
+    transition: color 0.15s; white-space: nowrap;
+    user-select: none;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+
+  /* ── Tab content ── */
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* ── CCF INNOVATION: Zone Reprendre ── */
+  .reprise-zone {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+  .reprise-header {
+    padding: 12px 18px;
+    background: #f8fafc;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .reprise-header-left { display: flex; align-items: center; gap: 10px; }
+  .reprise-header-title { font-weight: 700; font-size: 13px; color: var(--text); }
+  .reprise-header-sub { font-size: 12px; color: var(--text-muted); }
+  .reprise-header-since {
+    font-size: 11px; font-weight: 600;
+    background: #dbeafe; color: var(--accent);
+    padding: 2px 8px; border-radius: 12px;
+  }
+
+  /* 3-column reprise grid */
+  .reprise-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0;
+  }
+  .reprise-col {
+    padding: 16px 18px;
+    border-right: 1px solid var(--border);
+  }
+  .reprise-col:last-child { border-right: none; }
+
+  .reprise-col-label {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.08em; margin-bottom: 10px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .reprise-col-label.q1 { color: var(--accent); }
+  .reprise-col-label.q2 { color: var(--alert); }
+  .reprise-col-label.q3 { color: var(--ok); }
+
+  .reprise-text {
+    font-size: 13px; line-height: 1.55; color: var(--text);
+  }
+  .reprise-decision {
+    margin-top: 8px; padding: 6px 10px;
+    background: #fff7ed; border-left: 3px solid var(--warn);
+    border-radius: 0 4px 4px 0;
+    font-size: 12px; font-weight: 500; color: #92400e;
+  }
+
+  .delta-row {
+    display: flex; align-items: flex-start; gap: 8px;
+    padding: 5px 0; font-size: 13px;
+  }
+  .delta-row .dr-icon { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+  .delta-row .dr-text { flex: 1; line-height: 1.4; }
+  .delta-row .dr-text strong { font-weight: 600; }
+  .delta-row .dr-text small { display: block; font-size: 11px; color: var(--text-muted); }
+  .delta-row .dr-text.alert strong { color: var(--alert); }
+
+  .decision-item {
+    display: flex; align-items: flex-start; gap: 8px;
+    padding: 5px 0; font-size: 13px;
+  }
+  .decision-check {
+    width: 16px; height: 16px; border: 2px solid var(--border);
+    border-radius: 4px; flex-shrink: 0; margin-top: 2px; cursor: pointer;
+  }
+  .decision-text { flex: 1; line-height: 1.4; }
+  .decision-text small { display: block; font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  .decision-urgent { color: var(--alert); font-size: 11px; font-weight: 700; margin-top: 2px; }
+
+  /* ── Premier contact state ── */
+  .premier-contact-zone {
+    background: var(--ok-bg);
+    border: 1px solid #86efac;
+    border-radius: var(--radius);
+    padding: 24px;
+    margin-bottom: 16px;
+    text-align: center;
+  }
+  .pc-icon { font-size: 32px; margin-bottom: 12px; }
+  .pc-title { font-size: 16px; font-weight: 700; color: #166534; margin-bottom: 6px; }
+  .pc-sub { font-size: 13px; color: #15803d; line-height: 1.6; max-width: 440px; margin: 0 auto; }
+  .pc-hint {
+    margin-top: 14px; font-size: 12px; color: #166534;
+    background: rgba(255,255,255,0.6); padding: 8px 14px;
+    border-radius: 6px; display: inline-block;
+  }
+
+  /* ── Content grid ── */
+  .content-grid { display: grid; grid-template-columns: 1fr 256px; gap: 16px; align-items: start; }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden;
+  }
+  .card + .card { margin-top: 12px; }
+  .card-header {
+    padding: 11px 16px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .card-header-title { font-weight: 600; font-size: 13px; }
+  .card-header-sub { font-size: 12px; color: var(--text-muted); margin-left: auto; }
+  .card-body { padding: 14px 16px; }
+
+  /* ── ATCD ── */
+  .atcd-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .atcd-section-label {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.07em; color: var(--text-subtle); margin-bottom: 6px;
+  }
+  .atcd-item {
+    display: flex; align-items: baseline; gap: 6px;
+    padding: 5px 0; border-bottom: 1px solid var(--border); font-size: 13px;
+  }
+  .atcd-item:last-child { border-bottom: none; }
+  .atcd-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; background: var(--accent); margin-top: 4px; }
+  .atcd-dot.red { background: var(--alert); }
+  .atcd-dot.amber { background: var(--warn); }
+  .atcd-name { flex: 1; }
+  .atcd-since { font-size: 11px; color: var(--text-subtle); flex-shrink: 0; }
+
+  /* ── Timeline ── */
+  .timeline { display: flex; flex-direction: column; }
+  .timeline-item {
+    display: flex; gap: 12px; padding: 11px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .timeline-item:last-child { border-bottom: none; }
+  .timeline-left { flex-shrink: 0; width: 48px; text-align: center; padding-top: 2px; }
+  .timeline-icon-wrap {
+    width: 30px; height: 30px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; margin: 0 auto 4px;
+  }
+  .ic-consult  { background: #dbeafe; }
+  .ic-result   { background: #d1fae5; }
+  .ic-result-alert { background: var(--alert-bg); }
+  .ic-ordonnance { background: var(--purple-bg); }
+  .ic-hospit   { background: #fef3c7; }
+  .timeline-date { font-size: 10px; color: var(--text-subtle); }
+  .timeline-body { flex: 1; }
+  .timeline-title { font-weight: 600; font-size: 13px; margin-bottom: 2px; }
+  .timeline-title.alert { color: var(--alert); }
+  .timeline-sub { font-size: 12px; color: var(--text-muted); line-height: 1.4; }
+  .timeline-tag {
+    display: inline-block; margin-top: 5px;
+    font-size: 11px; padding: 2px 7px; border-radius: 4px; font-weight: 500;
+  }
+  .ttag-consult { background: #dbeafe; color: #1d4ed8; }
+  .ttag-result  { background: #d1fae5; color: #065f46; }
+  .ttag-alert   { background: var(--alert-bg); color: var(--alert); }
+  .ttag-ordo    { background: var(--purple-bg); color: var(--purple); }
+  .ttag-hospit  { background: #fef3c7; color: #92400e; }
+
+  /* ── Traitements ── */
+  .treatment-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 0; border-bottom: 1px solid var(--border);
+  }
+  .treatment-item:last-child { border-bottom: none; padding-bottom: 0; }
+  .treatment-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); flex-shrink: 0; }
+  .treatment-name { font-size: 13px; font-weight: 500; flex: 1; }
+  .treatment-dose { font-size: 11px; color: var(--text-muted); }
+  .treatment-since { font-size: 11px; color: var(--text-subtle); }
+
+  /* ── Notes ── */
+  .right-col { display: flex; flex-direction: column; gap: 12px; }
+  .note-item { padding: 9px 0; border-bottom: 1px solid var(--border); }
+  .note-item:last-child { border-bottom: none; padding-bottom: 0; }
+  .note-date { font-size: 10px; color: var(--text-subtle); margin-bottom: 4px; }
+  .note-text { font-size: 12px; line-height: 1.5; color: var(--text); }
+  .note-tag { display: inline-block; font-size: 10px; padding: 1px 5px; border-radius: 3px; margin-top: 4px; }
+  .ntag-attention { background: #fef3c7; color: #92400e; }
+  .ntag-social    { background: #f0fdf4; color: #166534; }
+  .ntag-preference{ background: var(--purple-bg); color: var(--purple); }
+  .ntag-decision  { background: var(--alert-bg); color: var(--alert); }
+
+  /* ── Action buttons ── */
+  .action-row { display: flex; flex-direction: column; gap: 6px; }
+  .btn {
+    padding: 8px 14px; border-radius: 6px;
+    font-size: 13px; font-weight: 500; cursor: pointer;
+    border: none; text-align: center; transition: opacity 0.15s;
+  }
+  .btn:hover { opacity: 0.85; }
+  .btn-primary   { background: var(--accent); color: white; }
+  .btn-secondary { background: #f3f4f6; color: var(--text); border: 1px solid var(--border); }
+
+  /* ── Patient switcher ── */
+  .patient-switcher {
+    display: flex; gap: 8px; margin-bottom: 0;
+    padding: 10px 20px;
+    background: #f8fafc;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    flex-shrink: 0;
+  }
+  .ps-label { color: var(--text-subtle); align-self: center; }
+  .ps-btn {
+    padding: 4px 10px; border-radius: 12px;
+    border: 1px solid var(--border); background: white;
+    font-size: 12px; cursor: pointer; color: var(--text-muted);
+    transition: all 0.15s;
+  }
+  .ps-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .ps-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+
+  /* ── Probe badge ── */
+  .probe-badge {
+    position: fixed; bottom: 12px; right: 12px;
+    background: #1a2233; color: #8fa3bf;
+    font-size: 10px; padding: 5px 10px; border-radius: 20px;
+    pointer-events: none; z-index: 100;
+  }
+</style>
+</head>
+<body>
+
+<!-- Top bar -->
+<div class="topbar">
+  <div class="topbar-logo">Med<span>Link</span></div>
+  <div class="topbar-sep"></div>
+  <div class="topbar-back">← Mon espace</div>
+  <div class="topbar-right">
+    <div class="topbar-practitioner">Dr. A. Durand</div>
+    <div class="topbar-avatar">AD</div>
+  </div>
+</div>
+
+<!-- Patient switcher (research probe only) -->
+<div class="patient-switcher" id="switcher">
+  <span class="ps-label">Patient :</span>
+  <button class="ps-btn active" onclick="switchPatient('michel')">Michel Rousseau · suivi</button>
+  <button class="ps-btn" onclick="switchPatient('lucie')">Lucie Fontaine · premier contact</button>
+</div>
+
+<!-- ── PATIENT : Michel Rousseau ── -->
+<div id="patient-michel" style="display:flex; flex-direction:column; flex:1; overflow:hidden;">
+
+  <!-- Patient banner -->
+  <div class="patient-banner">
+    <div class="patient-avatar">MR</div>
+    <div class="patient-info">
+      <div class="patient-name">Michel Rousseau</div>
+      <div class="patient-meta">58 ans · né le 14/03/1968 · Médecin traitant : Dr. Durand · Suivi depuis 2014</div>
+      <div class="patient-tags">
+        <span class="patient-tag tag-condition">Diabète type 2</span>
+        <span class="patient-tag tag-condition">HTA</span>
+        <span class="patient-tag tag-condition">Dyslipidémie</span>
+        <span class="patient-tag tag-alert">⚠ IMC 31</span>
+        <span class="patient-tag tag-allergy">Allergie pénicilline</span>
+      </div>
+    </div>
+    <div class="patient-banner-right">
+      <div class="banner-stat">
+        <div class="banner-stat-value" style="color:var(--accent)">7</div>
+        <div class="banner-stat-label">Traitements</div>
+      </div>
+      <div class="banner-stat">
+        <div class="banner-stat-value" style="color:var(--alert)">1</div>
+        <div class="banner-stat-label">Alerte active</div>
+      </div>
+      <div class="banner-stat">
+        <div class="banner-stat-value" style="color:var(--text-muted)">12 ans</div>
+        <div class="banner-stat-label">Suivi</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="layout">
+    <nav class="sidebar">
+      <div class="sidebar-section-label">Dossier</div>
+      <div class="sidebar-item active" onclick="switchTab('reprendre')"><span class="icon">🔄</span> Reprendre</div>
+      <div class="sidebar-item" onclick="switchTab('historique')"><span class="icon">🕐</span> Historique</div>
+      <div class="sidebar-item">
+        <span class="icon">🧪</span> Résultats
+        <span class="sidebar-badge">1</span>
+      </div>
+      <div class="sidebar-item"><span class="icon">💊</span> Ordonnances</div>
+      <div class="sidebar-item"><span class="icon">📎</span> Documents</div>
+      <div class="sidebar-section-label">Histoire</div>
+      <div class="sidebar-item"><span class="icon">🏥</span> Antécédents</div>
+      <div class="sidebar-item"><span class="icon">💉</span> Vaccins</div>
+      <div class="sidebar-section-label">Mon travail</div>
+      <div class="sidebar-item"><span class="icon">📝</span> Mes notes</div>
+      <div class="sidebar-item"><span class="icon">📬</span> Courriers</div>
+    </nav>
+
+    <main class="main" id="main-michel">
+
+      <!-- Tab bar -->
+      <div class="tab-bar">
+        <div class="tab active" onclick="switchTab('reprendre')" id="tab-reprendre">Reprendre</div>
+        <div class="tab" onclick="switchTab('historique')" id="tab-historique">Historique</div>
+        <div class="tab">Résultats</div>
+        <div class="tab">Ordonnances</div>
+        <div class="tab">Documents</div>
+        <div class="tab">Antécédents</div>
+      </div>
+
+      <!-- ═══ TAB: REPRENDRE ═══ -->
+      <div class="tab-panel active" id="panel-reprendre">
+
+        <!-- CCF CORE: Zone Reprendre le raisonnement — 30 secondes -->
+        <div class="reprise-zone">
+          <div class="reprise-header">
+            <div class="reprise-header-left">
+              <span style="font-size:16px">🔄</span>
+              <div>
+                <div class="reprise-header-title">Reprendre le raisonnement</div>
+                <div class="reprise-header-sub">Dernière consultation · 18 juin 2026</div>
+              </div>
+            </div>
+            <div class="reprise-header-since">il y a 18 jours</div>
+          </div>
+
+          <div class="reprise-grid">
+
+            <!-- Q1: Où en étais-je ? -->
+            <div class="reprise-col">
+              <div class="reprise-col-label q1">↩ Où en étais-je ?</div>
+              <div class="reprise-text">
+                HbA1c en hausse depuis l'arrêt du sport en hiver. Observance discutée — patient honnête sur les écarts alimentaires.
+              </div>
+              <div class="reprise-decision">
+                Seuil de décision : si HbA1c &gt; 9 → discuter insuline
+              </div>
+            </div>
+
+            <!-- Q2: Ce qui a changé ? (delta) -->
+            <div class="reprise-col">
+              <div class="reprise-col-label q2">⚡ Ce qui a changé ?</div>
+              <div class="delta-row">
+                <span class="dr-icon">🔴</span>
+                <div class="dr-text alert">
+                  <strong>HbA1c 8,9 % — hors cible</strong>
+                  <small>Reçu le 2 juillet · Objectif &lt; 7 % · 2ème hausse</small>
+                </div>
+              </div>
+              <div class="delta-row">
+                <span class="dr-icon">✅</span>
+                <div class="dr-text">
+                  <strong>Bilan lipidique dans les normes</strong>
+                  <small>LDL 1,1 g/L · 15 juin · Objectif LDL atteint</small>
+                </div>
+              </div>
+              <div class="delta-row">
+                <span class="dr-icon">📄</span>
+                <div class="dr-text">
+                  <strong>Aucun nouveau message</strong>
+                  <small>Aucune hospitalisation depuis la dernière visite</small>
+                </div>
+              </div>
+            </div>
+
+            <!-- Q3: Que dois-je faire ? -->
+            <div class="reprise-col">
+              <div class="reprise-col-label q3">→ Que faire ?</div>
+              <div class="decision-item">
+                <div class="decision-check"></div>
+                <div class="decision-text">
+                  Ajustement traitement antidiabétique
+                  <small>HbA1c &gt; 9 % atteint — seuil de décision franchi</small>
+                  <div class="decision-urgent">À traiter aujourd'hui</div>
+                </div>
+              </div>
+              <div class="decision-item">
+                <div class="decision-check"></div>
+                <div class="decision-text">
+                  Évoquer l'insuline si patient prêt
+                  <small>Réticence connue — voir note de février</small>
+                </div>
+              </div>
+              <div class="decision-item">
+                <div class="decision-check"></div>
+                <div class="decision-text">
+                  Renouveler ordonnances habituelles
+                  <small>Ramipril · Amlodipine · Rosuvastatine</small>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Below the reprise zone: standard content -->
+        <div class="content-grid">
+          <div>
+            <div class="card">
+              <div class="card-header">
+                <span>🏥</span>
+                <span class="card-header-title">Antécédents principaux</span>
+              </div>
+              <div class="card-body">
+                <div class="atcd-grid">
+                  <div>
+                    <div class="atcd-section-label">Médical</div>
+                    <div class="atcd-item"><div class="atcd-dot red"></div><div class="atcd-name">Diabète type 2</div><div class="atcd-since">dep. 2016</div></div>
+                    <div class="atcd-item"><div class="atcd-dot amber"></div><div class="atcd-name">Hypertension artérielle</div><div class="atcd-since">dep. 2014</div></div>
+                    <div class="atcd-item"><div class="atcd-dot amber"></div><div class="atcd-name">Dyslipidémie</div><div class="atcd-since">dep. 2017</div></div>
+                  </div>
+                  <div>
+                    <div class="atcd-section-label">Allergies</div>
+                    <div class="atcd-item"><div class="atcd-dot red"></div><div class="atcd-name">Allergie Pénicilline</div><div class="atcd-since">⚠</div></div>
+                    <div class="atcd-section-label" style="margin-top:8px">Chirurgical</div>
+                    <div class="atcd-item"><div class="atcd-dot"></div><div class="atcd-name">Appendicectomie</div><div class="atcd-since">1992</div></div>
+                    <div class="atcd-item"><div class="atcd-dot"></div><div class="atcd-name">Hernie inguinale</div><div class="atcd-since">2019</div></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="right-col">
+            <div class="card">
+              <div class="card-header">
+                <span>📝</span>
+                <span class="card-header-title">Mes notes</span>
+              </div>
+              <div class="card-body" style="padding: 8px 16px;">
+                <div class="note-item">
+                  <div class="note-date">18 juin 2026</div>
+                  <div class="note-text">HbA1c remonte — observance irrégulière. Seuil insuline fixé à HbA1c &gt; 9.</div>
+                  <span class="note-tag ntag-decision">Seuil décision</span>
+                </div>
+                <div class="note-item">
+                  <div class="note-date">fév. 2026</div>
+                  <div class="note-text">Réticent à l'insuline — peur des injections, contrainte pro (commercial itinérant).</div>
+                  <span class="note-tag ntag-preference">Préférence patient</span>
+                </div>
+                <div class="note-item">
+                  <div class="note-date">déc. 2025</div>
+                  <div class="note-text">Épouse présente, inquiète. Bonne alliance thérapeutique en couple.</div>
+                  <span class="note-tag ntag-social">Contexte social</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header"><span>⚡</span><span class="card-header-title">Actions</span></div>
+              <div class="card-body">
+                <div class="action-row">
+                  <button class="btn btn-primary">Ouvrir la consultation</button>
+                  <button class="btn btn-secondary">Rédiger une ordonnance</button>
+                  <button class="btn btn-secondary">Demander un bilan</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ═══ TAB: HISTORIQUE ═══ -->
+      <div class="tab-panel" id="panel-historique">
+        <div class="card">
+          <div class="card-header">
+            <span>🕐</span>
+            <span class="card-header-title">Événements récents</span>
+            <span class="card-header-sub">6 derniers mois</span>
+          </div>
+          <div class="card-body" style="padding: 4px 16px;">
+            <div class="timeline">
+
+              <div class="timeline-item">
+                <div class="timeline-left">
+                  <div class="timeline-icon-wrap ic-result-alert">🔴</div>
+                  <div class="timeline-date">2 juil.<br>2026</div>
+                </div>
+                <div class="timeline-body">
+                  <div class="timeline-title alert">HbA1c 8,9 % — hors cible</div>
+                  <div class="timeline-sub">Deuxième élévation consécutive · Objectif &lt; 7 %</div>
+                  <span class="timeline-tag ttag-alert">À traiter</span>
+                </div>
+              </div>
+
+              <div class="timeline-item">
+                <div class="timeline-left">
+                  <div class="timeline-icon-wrap ic-consult">📋</div>
+                  <div class="timeline-date">18 juin<br>2026</div>
+                </div>
+                <div class="timeline-body">
+                  <div class="timeline-title">Consultation suivi trimestriel</div>
+                  <div class="timeline-sub">HbA1c 8,1 % en hausse. Observance discutée. Seuil décision HbA1c &gt; 9 → insuline.</div>
+                  <span class="timeline-tag ttag-consult">Consultation</span>
+                </div>
+              </div>
+
+              <div class="timeline-item">
+                <div class="timeline-left">
+                  <div class="timeline-icon-wrap ic-result">🧪</div>
+                  <div class="timeline-date">15 juin<br>2026</div>
+                </div>
+                <div class="timeline-body">
+                  <div class="timeline-title">Bilan lipidique — dans les normes</div>
+                  <div class="timeline-sub">LDL 1,1 g/L · Objectif LDL atteint sous statine</div>
+                  <span class="timeline-tag ttag-result">Résultat normal</span>
+                </div>
+              </div>
+
+              <div class="timeline-item">
+                <div class="timeline-left">
+                  <div class="timeline-icon-wrap ic-ordonnance">💊</div>
+                  <div class="timeline-date">18 mars<br>2026</div>
+                </div>
+                <div class="timeline-body">
+                  <div class="timeline-title">Ajustement traitement — Metformine augmentée</div>
+                  <div class="timeline-sub">Metformine 1000 mg × 3/j + Empagliflozine 10 mg ajouté.</div>
+                  <span class="timeline-tag ttag-ordo">Modification traitement</span>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<!-- ── PATIENT : Lucie Fontaine · Premier contact ── -->
+<div id="patient-lucie" style="display:none; flex-direction:column; flex:1; overflow:hidden;">
+
+  <div class="patient-banner">
+    <div class="patient-avatar" style="background:#d1fae5; color:var(--ok)">LF</div>
+    <div class="patient-info">
+      <div class="patient-name">Lucie Fontaine</div>
+      <div class="patient-meta">32 ans · née le 03/09/1993 · Médecin traitant déclaré : Dr. Durand</div>
+      <div class="patient-tags">
+        <span class="patient-tag tag-new">Premier contact</span>
+      </div>
+    </div>
+    <div class="patient-banner-right">
+      <div class="banner-stat">
+        <div class="banner-stat-value" style="color:var(--text-subtle)">—</div>
+        <div class="banner-stat-label">Traitements</div>
+      </div>
+      <div class="banner-stat">
+        <div class="banner-stat-value" style="color:var(--text-subtle)">—</div>
+        <div class="banner-stat-label">Alertes</div>
+      </div>
+      <div class="banner-stat">
+        <div class="banner-stat-value" style="color:var(--ok)">Nouveau</div>
+        <div class="banner-stat-label">Statut</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="layout">
+    <nav class="sidebar">
+      <div class="sidebar-section-label">Dossier</div>
+      <div class="sidebar-item active"><span class="icon">🔄</span> Reprendre</div>
+      <div class="sidebar-item"><span class="icon">🕐</span> Historique</div>
+      <div class="sidebar-item"><span class="icon">🧪</span> Résultats</div>
+      <div class="sidebar-item"><span class="icon">💊</span> Ordonnances</div>
+      <div class="sidebar-section-label">Mon travail</div>
+      <div class="sidebar-item"><span class="icon">📝</span> Mes notes</div>
+    </nav>
+
+    <main class="main">
+      <div class="tab-bar">
+        <div class="tab active">Reprendre</div>
+        <div class="tab">Historique</div>
+        <div class="tab">Résultats</div>
+        <div class="tab">Documents</div>
+      </div>
+
+      <!-- PD-001: Premier contact — signal explicite et bienveillant -->
+      <div class="premier-contact-zone">
+        <div class="pc-icon">🌱</div>
+        <div class="pc-title">Premier contact — aucun historique clinique disponible</div>
+        <div class="pc-sub">
+          Ce patient n'a pas encore de mémoire clinique dans MedLink.<br>
+          Chaque information que vous capturez aujourd'hui deviendra disponible dès la prochaine consultation.
+        </div>
+        <div class="pc-hint">
+          La mémoire clinique de Lucie Fontaine commence maintenant.
+        </div>
+      </div>
+
+      <!-- Actions pour démarrer -->
+      <div class="content-grid">
+        <div>
+          <div class="card">
+            <div class="card-header">
+              <span>📋</span>
+              <span class="card-header-title">Informations à recueillir aujourd'hui</span>
+              <span class="card-header-sub">Anamnèse initiale</span>
+            </div>
+            <div class="card-body">
+              <div style="font-size:13px; color:var(--text-muted); line-height:1.7">
+                <div style="display:flex; align-items:center; gap:8px; padding:5px 0; border-bottom:1px solid var(--border)">
+                  <div style="width:16px; height:16px; border:2px solid var(--border); border-radius:4px; flex-shrink:0"></div>
+                  Motif de consultation et antécédents personnels
+                </div>
+                <div style="display:flex; align-items:center; gap:8px; padding:5px 0; border-bottom:1px solid var(--border)">
+                  <div style="width:16px; height:16px; border:2px solid var(--border); border-radius:4px; flex-shrink:0"></div>
+                  Traitements en cours et automédication
+                </div>
+                <div style="display:flex; align-items:center; gap:8px; padding:5px 0; border-bottom:1px solid var(--border)">
+                  <div style="width:16px; height:16px; border:2px solid var(--border); border-radius:4px; flex-shrink:0"></div>
+                  Allergies connues
+                </div>
+                <div style="display:flex; align-items:center; gap:8px; padding:5px 0; border-bottom:1px solid var(--border)">
+                  <div style="width:16px; height:16px; border:2px solid var(--border); border-radius:4px; flex-shrink:0"></div>
+                  Antécédents familiaux notables
+                </div>
+                <div style="display:flex; align-items:center; gap:8px; padding:5px 0">
+                  <div style="width:16px; height:16px; border:2px solid var(--border); border-radius:4px; flex-shrink:0"></div>
+                  Contexte de vie (profession, situation familiale)
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="right-col">
+          <div class="card">
+            <div class="card-header"><span>⚡</span><span class="card-header-title">Démarrer</span></div>
+            <div class="card-body">
+              <div class="action-row">
+                <button class="btn btn-primary">Ouvrir la consultation</button>
+                <button class="btn btn-secondary">Saisir les antécédents</button>
+                <button class="btn btn-secondary">Ajouter une note</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<div class="probe-badge">Sonde de recherche v2 — Dossier patient — CCF-001 / MP-001 / PD-001</div>
+
+<script>
+  function switchTab(tab) {
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-bar .tab').forEach(t => t.classList.remove('active'));
+    const panel = document.getElementById('panel-' + tab);
+    const tabEl = document.getElementById('tab-' + tab);
+    if (panel) panel.classList.add('active');
+    if (tabEl) tabEl.classList.add('active');
+  }
+
+  function switchPatient(patient) {
+    document.querySelectorAll('#switcher .ps-btn').forEach(b => b.classList.remove('active'));
+    event.target.classList.add('active');
+
+    if (patient === 'michel') {
+      document.getElementById('patient-michel').style.display = 'flex';
+      document.getElementById('patient-lucie').style.display = 'none';
+    } else {
+      document.getElementById('patient-michel').style.display = 'none';
+      document.getElementById('patient-lucie').style.display = 'flex';
+    }
+  }
+</script>
+
+</body>
+</html>

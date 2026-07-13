@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MedLink — Tableau de bord v3</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #f0f4f8;
+  --surface: #ffffff;
+  --sidebar: #111827;
+  --sidebar-hover: #1f2937;
+  --primary: #2563eb;
+  --primary-light: #eff6ff;
+  --green: #10b981;
+  --green-light: #ecfdf5;
+  --amber: #f59e0b;
+  --amber-light: #fffbeb;
+  --red: #ef4444;
+  --red-light: #fef2f2;
+  --text: #111827;
+  --muted: #6b7280;
+  --subtle: #9ca3af;
+  --border: #e5e7eb;
+  --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md: 0 4px 6px rgba(0,0,0,0.06);
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.5;
+  display: flex;
+  min-height: 100vh;
+}
+
+/* ── Sidebar ── */
+.sidebar {
+  width: 230px;
+  background: var(--sidebar);
+  display: flex;
+  flex-direction: column;
+  padding: 20px 12px;
+  position: fixed;
+  top: 0; left: 0; bottom: 0;
+}
+
+.logo {
+  color: white;
+  font-size: 18px;
+  font-weight: 700;
+  padding: 8px 12px 24px;
+  letter-spacing: -0.3px;
+}
+.logo em { color: var(--primary); font-style: normal; }
+
+.doctor-card {
+  background: var(--sidebar-hover);
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.doctor-avatar {
+  width: 36px; height: 36px;
+  background: var(--primary);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: white; font-weight: 700; font-size: 13px;
+  flex-shrink: 0;
+}
+.doctor-name { color: white; font-size: 13px; font-weight: 500; }
+.doctor-role { color: #9ca3af; font-size: 11px; }
+
+nav { display: flex; flex-direction: column; gap: 2px; }
+
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 12px; border-radius: 8px;
+  color: #9ca3af; font-size: 13px; font-weight: 500;
+  cursor: pointer; text-decoration: none;
+  transition: all 0.15s;
+}
+.nav-item:hover { background: var(--sidebar-hover); color: white; }
+.nav-item.active { background: var(--primary); color: white; }
+
+.nav-badge {
+  margin-left: auto;
+  background: var(--amber); color: white;
+  border-radius: 10px; padding: 1px 7px;
+  font-size: 11px; font-weight: 700;
+}
+
+/* ── Main ── */
+.main {
+  margin-left: 230px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* ── Header ── */
+.header {
+  background: white;
+  padding: 14px 28px;
+  display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 5;
+  box-shadow: var(--shadow);
+}
+.header-left h1 { font-size: 15px; font-weight: 600; }
+.header-left p { font-size: 12px; color: var(--muted); margin-top: 1px; }
+
+.header-actions { display: flex; gap: 8px; }
+
+.btn {
+  padding: 7px 14px; border-radius: 8px; border: none;
+  font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s;
+}
+.btn-primary { background: var(--primary); color: white; }
+.btn-primary:hover { background: #1d4ed8; }
+.btn-outline { background: white; color: var(--muted); border: 1px solid var(--border); }
+.btn-outline:hover { background: var(--bg); }
+
+/* ── Content ── */
+.content { padding: 24px 28px; display: flex; flex-direction: column; gap: 20px; flex: 1; }
+
+/* ── Contexte du jour ── */
+.contexte-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+
+.ctx-card {
+  background: white; border-radius: 12px; padding: 16px 18px;
+  box-shadow: var(--shadow); border-top: 3px solid transparent;
+}
+.ctx-card.nouveautes { border-top-color: var(--amber); }
+.ctx-card.suspens { border-top-color: var(--red); }
+.ctx-card.planning { border-top-color: var(--primary); }
+
+.ctx-label {
+  font-size: 11px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.5px; color: var(--muted); margin-bottom: 12px;
+}
+
+.ctx-line {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 5px 0; border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.ctx-line:last-child { border-bottom: none; padding-bottom: 0; }
+
+.dot {
+  width: 7px; height: 7px; border-radius: 50%; margin-top: 5px; flex-shrink: 0;
+}
+.dot-amber { background: var(--amber); }
+.dot-red { background: var(--red); }
+.dot-green { background: var(--green); }
+.dot-blue { background: var(--primary); }
+.dot-gray { background: #d1d5db; }
+
+.big-number { font-size: 30px; font-weight: 700; margin-bottom: 10px; }
+
+/* ── Agenda ── */
+.card {
+  background: white; border-radius: 12px; box-shadow: var(--shadow); overflow: hidden;
+}
+
+.card-head {
+  padding: 14px 20px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.card-title { font-size: 13px; font-weight: 600; }
+
+.patient-row {
+  display: grid; grid-template-columns: 60px 1fr auto;
+  align-items: center; gap: 12px;
+  padding: 13px 20px; border-bottom: 1px solid var(--border);
+  cursor: pointer; text-decoration: none; color: inherit;
+  transition: background 0.1s;
+}
+.patient-row:last-child { border-bottom: none; }
+.patient-row:hover { background: var(--bg); }
+.patient-row.active-row { background: #eff6ff; }
+
+.p-time { font-size: 12px; color: var(--muted); font-weight: 500; text-align: center; }
+.p-status { width: 8px; height: 8px; border-radius: 50%; margin: 4px auto 0; }
+
+.p-name {
+  font-weight: 600; font-size: 14px;
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+}
+.p-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.p-alert { font-size: 12px; margin-top: 3px; display: flex; align-items: center; gap: 4px; }
+.p-alert.warn { color: var(--amber); }
+.p-alert.urgent { color: var(--red); font-weight: 500; }
+.p-alert.info { color: var(--primary); }
+
+.p-actions { display: flex; align-items: center; gap: 8px; }
+
+/* badges */
+.badge {
+  display: inline-flex; align-items: center;
+  padding: 2px 8px; border-radius: 20px;
+  font-size: 11px; font-weight: 600; white-space: nowrap;
+}
+.badge-done { background: var(--green-light); color: #065f46; }
+.badge-current { background: var(--primary-light); color: #1e40af; }
+.badge-pending { background: var(--amber-light); color: #92400e; }
+.badge-new { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+
+/* ── Bottom grid ── */
+.bottom-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+/* Transmissions */
+.trans-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 18px; border-bottom: 1px solid var(--border);
+}
+.trans-item:last-child { border-bottom: none; }
+
+.trans-icon {
+  width: 34px; height: 34px; border-radius: 8px;
+  background: var(--amber-light);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px; flex-shrink: 0;
+}
+.trans-name { font-weight: 500; font-size: 13px; }
+.trans-reason { font-size: 12px; color: var(--muted); }
+.trans-btn { margin-left: auto; }
+
+/* Charge mentale */
+.charge-body { padding: 16px 18px; }
+.progress-wrap { margin: 10px 0 14px; }
+.progress-label {
+  display: flex; justify-content: space-between;
+  font-size: 12px; color: var(--muted); margin-bottom: 6px;
+}
+.progress-bg { height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary) 0%, var(--green) 100%);
+  border-radius: 4px; transition: width 0.3s;
+}
+.charge-stats { display: flex; flex-wrap: wrap; gap: 12px; }
+.charge-stat { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--muted); }
+.charge-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+.alert-bar {
+  margin: 12px 18px 14px;
+  padding: 10px 12px; background: var(--amber-light);
+  border-radius: 8px; font-size: 12px; color: #92400e;
+}
+
+/* interruptions */
+.interrupt-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 18px; border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.interrupt-item:last-child { border-bottom: none; }
+.interrupt-type {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.5px; color: var(--muted); width: 56px; flex-shrink: 0;
+}
+.interrupt-time { margin-left: auto; font-size: 11px; color: var(--subtle); }
+</style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<aside class="sidebar">
+  <div class="logo">Med<em>Link</em></div>
+
+  <div class="doctor-card">
+    <div class="doctor-avatar">ML</div>
+    <div>
+      <div class="doctor-name">Dr. Martin Leroy</div>
+      <div class="doctor-role">Médecine générale</div>
+    </div>
+  </div>
+
+  <nav>
+    <a class="nav-item active" href="probe-dashboard-v3.html">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      Aujourd'hui
+    </a>
+    <a class="nav-item" href="#">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      Patients
+    </a>
+    <a class="nav-item" href="#">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+      Transmissions
+      <span class="nav-badge">2</span>
+    </a>
+    <a class="nav-item" href="#">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+      Paramètres
+    </a>
+  </nav>
+</aside>
+
+<!-- Main -->
+<main class="main">
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-left">
+      <h1>Jeudi 9 juillet 2026</h1>
+      <p>8 patients planifiés · 3 vus · 5 restants · Prochaine consultation à 11h00</p>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-outline">🔔 2 nouvelles</button>
+      <button class="btn btn-primary">+ Ajouter un patient</button>
+    </div>
+  </header>
+
+  <!-- Content -->
+  <div class="content">
+
+    <!-- Contexte du jour -->
+    <div class="contexte-strip">
+
+      <div class="ctx-card nouveautes">
+        <div class="ctx-label">⚡ Ce qui a changé depuis hier</div>
+        <div class="ctx-line">
+          <div class="dot dot-amber"></div>
+          <span>Résultats labo — Mercier Antoine · <strong style="color:var(--amber)">2 anomalies</strong></span>
+        </div>
+        <div class="ctx-line">
+          <div class="dot dot-blue"></div>
+          <span>Message — Dr. Morin cardiologue (Renard Paul)</span>
+        </div>
+        <div class="ctx-line">
+          <div class="dot dot-green"></div>
+          <span>CR hospitalier reçu — Dubois Hélène</span>
+        </div>
+      </div>
+
+      <div class="ctx-card suspens">
+        <div class="ctx-label">⏸ En suspens</div>
+        <div class="ctx-line">
+          <div class="dot dot-red"></div>
+          <span>Note non finalisée — <strong>Renard Paul</strong> (hier 09h00)</span>
+        </div>
+        <div class="ctx-line">
+          <div class="dot dot-amber"></div>
+          <span>Renouvellement ordonnance — Dubois Marc (3 jours)</span>
+        </div>
+        <div class="ctx-line">
+          <div class="dot dot-amber"></div>
+          <span>Résultats labo Mercier à intégrer à sa note</span>
+        </div>
+      </div>
+
+      <div class="ctx-card planning">
+        <div class="ctx-label">📅 Aujourd'hui</div>
+        <div class="big-number">8</div>
+        <div class="ctx-line">
+          <div class="dot dot-green"></div>
+          <span>3 consultations terminées</span>
+        </div>
+        <div class="ctx-line">
+          <div class="dot dot-blue"></div>
+          <span>En cours : Lambert Marie · 10h30</span>
+        </div>
+        <div class="ctx-line">
+          <div class="dot dot-gray"></div>
+          <span>2 premiers contacts prévus</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Agenda -->
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">Agenda du jour</div>
+        <span class="badge badge-current">3 / 8 vus</span>
+      </div>
+
+      <a class="patient-row" href="#">
+        <div class="p-time">08h30<div class="p-status" style="background:var(--green)"></div></div>
+        <div>
+          <div class="p-name">Bernard Tissot <span style="font-weight:400;color:var(--muted);font-size:13px">· 71 ans</span> <span class="badge badge-done">Terminé</span></div>
+          <div class="p-sub">BPCO — renouvellement inhalateur · ordonnance produite</div>
+        </div>
+        <div class="p-actions"></div>
+      </a>
+
+      <a class="patient-row" href="#">
+        <div class="p-time">09h00<div class="p-status" style="background:#f59e0b"></div></div>
+        <div>
+          <div class="p-name">Renard Paul <span style="font-weight:400;color:var(--muted);font-size:13px">· 67 ans</span> <span class="badge badge-pending">Note en suspens</span></div>
+          <div class="p-sub">Insuffisance cardiaque — suivi mensuel</div>
+          <div class="p-alert warn">⚠ Message Dr. Morin non traité · Note de consultation non validée</div>
+        </div>
+        <div class="p-actions"></div>
+      </a>
+
+      <a class="patient-row" href="#">
+        <div class="p-time">09h30<div class="p-status" style="background:var(--green)"></div></div>
+        <div>
+          <div class="p-name">Mercier Antoine <span style="font-weight:400;color:var(--muted);font-size:13px">· 52 ans</span> <span class="badge badge-done">Terminé</span></div>
+          <div class="p-sub">HTA + Diabète T2 — résultats bilan biologique</div>
+          <div class="p-alert urgent">🔴 Résultats anomalies à intégrer · HbA1c 8,4% · LDL 1,8 g/L</div>
+        </div>
+        <div class="p-actions"></div>
+      </a>
+
+      <a class="patient-row active-row" href="probe-dossier-v3.html">
+        <div class="p-time">10h30<div class="p-status" style="background:var(--primary)"></div></div>
+        <div>
+          <div class="p-name">Lambert Marie <span style="font-weight:400;color:var(--muted);font-size:13px">· 34 ans</span> <span class="badge badge-current">En cours</span></div>
+          <div class="p-sub">🌱 Premier contact — aucun historique clinique disponible</div>
+        </div>
+        <div class="p-actions">
+          <button class="btn btn-primary">Ouvrir →</button>
+        </div>
+      </a>
+
+      <a class="patient-row" href="probe-dossier-v3.html">
+        <div class="p-time">11h00<div class="p-status" style="background:#d1d5db"></div></div>
+        <div>
+          <div class="p-name">Fontaine Claire <span style="font-weight:400;color:var(--muted);font-size:13px">· 45 ans</span></div>
+          <div class="p-sub">Anxiété — suivi mensuel · Dernière visite : 3 juin 2026</div>
+        </div>
+        <div class="p-actions"></div>
+      </a>
+
+      <a class="patient-row" href="#">
+        <div class="p-time">11h30<div class="p-status" style="background:#d1d5db"></div></div>
+        <div>
+          <div class="p-name">Dubois Hélène <span style="font-weight:400;color:var(--muted);font-size:13px">· 58 ans</span></div>
+          <div class="p-sub">Retour hospitalisation — CR reçu ce matin</div>
+          <div class="p-alert info">📄 Compte-rendu hospitalier à intégrer au dossier</div>
+        </div>
+        <div class="p-actions"></div>
+      </a>
+
+      <a class="patient-row" href="#">
+        <div class="p-time">14h00<div class="p-status" style="background:#d1d5db"></div></div>
+        <div>
+          <div class="p-name">Moreau Jean <span style="font-weight:400;color:var(--muted);font-size:13px">· 63 ans</span> <span class="badge badge-new">🌱 1er contact</span></div>
+          <div class="p-sub">Adressé par Dr. Simon — bilan de santé général</div>
+        </div>
+        <div class="p-actions"></div>
+      </a>
+
+      <a class="patient-row" href="#">
+        <div class="p-time">14h30<div class="p-status" style="background:#d1d5db"></div></div>
+        <div>
+          <div class="p-name">Simon Brigitte <span style="font-weight:400;color:var(--muted);font-size:13px">· 49 ans</span></div>
+          <div class="p-sub">Lombalgie chronique — coordination kinésithérapie</div>
+        </div>
+        <div class="p-actions"></div>
+      </a>
+
+    </div>
+
+    <!-- Bottom grid -->
+    <div class="bottom-grid">
+
+      <!-- Transmissions — NEW v3 (Clinical Continuity H-CC-001) -->
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="margin-right:6px"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+            Transmissions à réaliser
+          </div>
+          <span class="badge badge-pending">2 en attente</span>
+        </div>
+
+        <div class="trans-item">
+          <div class="trans-icon">📋</div>
+          <div>
+            <div class="trans-name">Renard Paul</div>
+            <div class="trans-reason">Congés demain — Dr. Petit assure la continuité des soins</div>
+          </div>
+          <div class="trans-btn">
+            <button class="btn btn-outline" style="font-size:12px;padding:5px 10px">Préparer</button>
+          </div>
+        </div>
+
+        <div class="trans-item">
+          <div class="trans-icon">🔬</div>
+          <div>
+            <div class="trans-name">Mercier Antoine</div>
+            <div class="trans-reason">Résultats anomalies — partage avec Dr. Morin (cardiologue)</div>
+          </div>
+          <div class="trans-btn">
+            <button class="btn btn-outline" style="font-size:12px;padding:5px 10px">Préparer</button>
+          </div>
+        </div>
+
+        <div class="alert-bar">
+          💡 Journée non clôturée — 2 transmissions à finaliser avant la fin de journée
+        </div>
+      </div>
+
+      <!-- Charge mentale -->
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="margin-right:6px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            Charge mentale du jour
+          </div>
+        </div>
+        <div class="charge-body">
+          <div class="progress-wrap">
+            <div class="progress-label">
+              <span>3 patients vus</span>
+              <span>5 restants · ~38%</span>
+            </div>
+            <div class="progress-bg">
+              <div class="progress-fill" style="width:38%"></div>
+            </div>
+          </div>
+          <div class="charge-stats">
+            <div class="charge-stat">
+              <div class="charge-dot" style="background:var(--green)"></div>
+              <span>3 consultations closes</span>
+            </div>
+            <div class="charge-stat">
+              <div class="charge-dot" style="background:var(--red)"></div>
+              <span>1 note en suspens</span>
+            </div>
+            <div class="charge-stat">
+              <div class="charge-dot" style="background:var(--amber)"></div>
+              <span>2 transmissions</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </div><!-- /content -->
+</main>
+
+</body>
+</html>

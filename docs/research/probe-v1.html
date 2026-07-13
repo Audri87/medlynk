@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MedLink — Sonde de recherche v1 — Résultat anormal</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f4f5f7;
+    --surface: #ffffff;
+    --sidebar-bg: #1a2233;
+    --sidebar-text: #8fa3bf;
+    --sidebar-active: #ffffff;
+    --sidebar-active-bg: #2d3f5c;
+    --accent: #2563eb;
+    --alert: #dc2626;
+    --alert-bg: #fef2f2;
+    --alert-border: #fecaca;
+    --warn: #d97706;
+    --warn-bg: #fffbeb;
+    --ok: #16a34a;
+    --ok-bg: #f0fdf4;
+    --text: #111827;
+    --text-muted: #6b7280;
+    --text-subtle: #9ca3af;
+    --border: #e5e7eb;
+    --radius: 8px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.5;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ── Top bar ── */
+  .topbar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 20px;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-shrink: 0;
+    z-index: 10;
+  }
+  .topbar-logo {
+    font-weight: 700;
+    font-size: 16px;
+    color: var(--accent);
+    letter-spacing: -0.3px;
+  }
+  .topbar-sep { width: 1px; height: 20px; background: var(--border); }
+  .topbar-patient {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .topbar-avatar {
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    background: #dbeafe;
+    color: var(--accent);
+    font-weight: 600;
+    font-size: 12px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .topbar-patient-name { font-weight: 600; font-size: 14px; }
+  .topbar-patient-meta { font-size: 12px; color: var(--text-muted); }
+  .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+  .topbar-practitioner { font-size: 13px; color: var(--text-muted); }
+  .topbar-date { font-size: 12px; color: var(--text-subtle); }
+
+  /* ── Layout ── */
+  .layout {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    width: 200px;
+    background: var(--sidebar-bg);
+    flex-shrink: 0;
+    padding: 16px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    overflow-y: auto;
+  }
+  .sidebar-section-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #4a5e7a;
+    padding: 12px 16px 4px;
+  }
+  .sidebar-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 16px;
+    color: var(--sidebar-text);
+    cursor: pointer;
+    font-size: 13px;
+    border-radius: 0;
+    transition: background 0.1s;
+  }
+  .sidebar-item:hover { background: rgba(255,255,255,0.05); color: #c9d8ed; }
+  .sidebar-item.active {
+    background: var(--sidebar-active-bg);
+    color: var(--sidebar-active);
+    font-weight: 500;
+  }
+  .sidebar-item .icon { font-size: 15px; opacity: 0.8; }
+  .sidebar-badge {
+    margin-left: auto;
+    background: var(--alert);
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 10px;
+  }
+
+  /* ── Main ── */
+  .main {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  /* ── Alert banner ── */
+  .alert-banner {
+    background: var(--alert-bg);
+    border: 1px solid var(--alert-border);
+    border-left: 4px solid var(--alert);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .alert-banner-icon { font-size: 20px; flex-shrink: 0; margin-top: 1px; }
+  .alert-banner-content { flex: 1; }
+  .alert-banner-title {
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--alert);
+    margin-bottom: 2px;
+  }
+  .alert-banner-sub { font-size: 13px; color: #7f1d1d; }
+  .alert-banner-time { font-size: 12px; color: var(--text-subtle); margin-left: auto; flex-shrink: 0; }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .card-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card-header-title { font-weight: 600; font-size: 13px; }
+  .card-header-sub { font-size: 12px; color: var(--text-muted); margin-left: auto; }
+  .card-body { padding: 16px; }
+
+  /* ── Result card ── */
+  .result-main {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .result-value {
+    font-size: 36px;
+    font-weight: 700;
+    color: var(--alert);
+    letter-spacing: -1px;
+  }
+  .result-unit { font-size: 14px; color: var(--text-muted); }
+  .result-range {
+    font-size: 12px;
+    color: var(--text-subtle);
+    padding: 3px 8px;
+    background: var(--alert-bg);
+    border-radius: 4px;
+    margin-left: auto;
+  }
+  .result-context-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-subtle);
+    margin-bottom: 8px;
+    margin-top: 16px;
+  }
+  .result-history {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+  }
+  .result-history-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    flex: 1;
+  }
+  .result-history-bar-wrap {
+    width: 100%;
+    height: 48px;
+    display: flex;
+    align-items: flex-end;
+    position: relative;
+  }
+  .result-history-bar {
+    width: 100%;
+    border-radius: 3px 3px 0 0;
+    transition: height 0.3s;
+  }
+  .bar-normal { background: #bbf7d0; }
+  .bar-warn { background: #fde68a; }
+  .bar-alert { background: #fca5a5; }
+  .result-history-val {
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .val-ok { color: var(--ok); }
+  .val-warn { color: var(--warn); }
+  .val-alert { color: var(--alert); }
+  .result-history-date {
+    font-size: 10px;
+    color: var(--text-subtle);
+    text-align: center;
+  }
+  .normal-zone {
+    font-size: 11px;
+    color: var(--text-subtle);
+    margin-top: 8px;
+    padding: 6px 10px;
+    background: var(--bg);
+    border-radius: 4px;
+    display: inline-block;
+  }
+
+  /* ── Two column grid ── */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+  /* ── Consultation card ── */
+  .consult-item {
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    gap: 12px;
+  }
+  .consult-item:last-child { border-bottom: none; padding-bottom: 0; }
+  .consult-date-badge {
+    flex-shrink: 0;
+    width: 48px;
+    text-align: center;
+  }
+  .consult-date-day { font-size: 20px; font-weight: 700; line-height: 1; color: var(--accent); }
+  .consult-date-mon { font-size: 10px; text-transform: uppercase; color: var(--text-muted); }
+  .consult-body { flex: 1; }
+  .consult-title { font-weight: 500; font-size: 13px; margin-bottom: 4px; }
+  .consult-note { font-size: 12px; color: var(--text-muted); line-height: 1.4; }
+  .consult-tag {
+    display: inline-block;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 500;
+    margin-top: 6px;
+  }
+  .tag-traitement { background: #dbeafe; color: #1d4ed8; }
+  .tag-bilan { background: #d1fae5; color: #065f46; }
+
+  /* ── Treatment list ─��� */
+  .treatment-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .treatment-item:last-child { border-bottom: none; padding-bottom: 0; }
+  .treatment-icon { font-size: 18px; }
+  .treatment-name { font-weight: 500; font-size: 13px; }
+  .treatment-dose { font-size: 12px; color: var(--text-muted); }
+  .treatment-duration { margin-left: auto; font-size: 11px; color: var(--text-subtle); }
+  .treatment-ok { color: var(--ok); font-size: 12px; margin-left: 8px; }
+
+  /* ── Notes panel ── */
+  .notes-panel {
+    width: 240px;
+    flex-shrink: 0;
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .notes-header {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    font-weight: 600;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .notes-header-icon { font-size: 14px; }
+  .notes-body { flex: 1; overflow-y: auto; padding: 12px 16px; }
+  .note-item {
+    margin-bottom: 14px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .note-item:last-child { border-bottom: none; }
+  .note-date { font-size: 10px; color: var(--text-subtle); margin-bottom: 4px; }
+  .note-text { font-size: 12px; color: var(--text); line-height: 1.5; }
+  .note-tag {
+    display: inline-block;
+    font-size: 10px;
+    padding: 1px 5px;
+    border-radius: 3px;
+    margin-top: 4px;
+  }
+  .ntag-attention { background: #fef3c7; color: #92400e; }
+  .ntag-info { background: #ede9fe; color: #5b21b6; }
+
+  /* ── Actions ── */
+  .actions-bar {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .btn {
+    padding: 8px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    transition: opacity 0.15s;
+  }
+  .btn:hover { opacity: 0.85; }
+  .btn-primary { background: var(--accent); color: white; }
+  .btn-secondary { background: #f3f4f6; color: var(--text); border: 1px solid var(--border); }
+  .btn-alert { background: var(--alert); color: white; }
+
+  /* ── Research probe watermark ── */
+  .probe-badge {
+    position: fixed;
+    bottom: 12px;
+    right: 12px;
+    background: #1a2233;
+    color: #8fa3bf;
+    font-size: 10px;
+    padding: 5px 10px;
+    border-radius: 20px;
+    pointer-events: none;
+    z-index: 100;
+  }
+</style>
+</head>
+<body>
+
+<!-- Top bar -->
+<div class="topbar">
+  <div class="topbar-logo">MedLink</div>
+  <div class="topbar-sep"></div>
+  <div class="topbar-patient">
+    <div class="topbar-avatar">SM</div>
+    <div>
+      <div class="topbar-patient-name">Sophie Martin</div>
+      <div class="topbar-patient-meta">38 ans · Hypothyroïdie · Suivi depuis 2019</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div class="topbar-practitioner">Dr. A. Durand</div>
+    <div class="topbar-date">Mardi 7 juillet 2026</div>
+  </div>
+</div>
+
+<!-- Layout -->
+<div class="layout">
+
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="sidebar-section-label">Dossier</div>
+    <div class="sidebar-item active">
+      <span class="icon">⚠️</span> Résultats
+      <span class="sidebar-badge">1</span>
+    </div>
+    <div class="sidebar-item"><span class="icon">📋</span> Consultations</div>
+    <div class="sidebar-item"><span class="icon">💊</span> Ordonnances</div>
+    <div class="sidebar-item"><span class="icon">📎</span> Documents</div>
+
+    <div class="sidebar-section-label">Histoire</div>
+    <div class="sidebar-item"><span class="icon">🏥</span> Antécédents</div>
+    <div class="sidebar-item"><span class="icon">👨‍👩‍👧</span> Famille</div>
+    <div class="sidebar-item"><span class="icon">💉</span> Vaccins</div>
+
+    <div class="sidebar-section-label">Travail</div>
+    <div class="sidebar-item"><span class="icon">📝</span> Mes notes</div>
+    <div class="sidebar-item"><span class="icon">📅</span> Prochain RDV</div>
+  </nav>
+
+  <!-- Main -->
+  <main class="main">
+
+    <!-- Alert banner -->
+    <div class="alert-banner">
+      <div class="alert-banner-icon">🔴</div>
+      <div class="alert-banner-content">
+        <div class="alert-banner-title">Résultat hors norme — TSH élevée</div>
+        <div class="alert-banner-sub">Laboratoire Biomédis · Prélèvement du 5 juil. 2026 · Reçu il y a 2h</div>
+      </div>
+      <div class="alert-banner-time">14:32</div>
+    </div>
+
+    <!-- Result card -->
+    <div class="card">
+      <div class="card-header">
+        <span>🧪</span>
+        <span class="card-header-title">Thyréostimuline (TSH)</span>
+        <span class="card-header-sub">Bilan thyroïdien — juil. 2026</span>
+      </div>
+      <div class="card-body">
+        <div class="result-main">
+          <div class="result-value">8,2</div>
+          <div class="result-unit">mUI/L</div>
+          <div class="result-range">N : 0,4 – 4,0 mUI/L</div>
+        </div>
+
+        <div class="result-context-label">Évolution sur 18 mois</div>
+        <div class="result-history">
+          <div class="result-history-item">
+            <div class="result-history-bar-wrap">
+              <div class="result-history-bar bar-normal" style="height:22px"></div>
+            </div>
+            <div class="result-history-val val-ok">2,1</div>
+            <div class="result-history-date">janv. 25</div>
+          </div>
+          <div class="result-history-item">
+            <div class="result-history-bar-wrap">
+              <div class="result-history-bar bar-normal" style="height:18px"></div>
+            </div>
+            <div class="result-history-val val-ok">1,8</div>
+            <div class="result-history-date">avr. 25</div>
+          </div>
+          <div class="result-history-item">
+            <div class="result-history-bar-wrap">
+              <div class="result-history-bar bar-normal" style="height:28px"></div>
+            </div>
+            <div class="result-history-val val-ok">2,9</div>
+            <div class="result-history-date">juil. 25</div>
+          </div>
+          <div class="result-history-item">
+            <div class="result-history-bar-wrap">
+              <div class="result-history-bar bar-warn" style="height:36px"></div>
+            </div>
+            <div class="result-history-val val-warn">4,8</div>
+            <div class="result-history-date">oct. 25</div>
+          </div>
+          <div class="result-history-item">
+            <div class="result-history-bar-wrap">
+              <div class="result-history-bar bar-warn" style="height:40px"></div>
+            </div>
+            <div class="result-history-val val-warn">5,3</div>
+            <div class="result-history-date">janv. 26</div>
+          </div>
+          <div class="result-history-item">
+            <div class="result-history-bar-wrap">
+              <div class="result-history-bar bar-alert" style="height:48px"></div>
+            </div>
+            <div class="result-history-val val-alert">8,2</div>
+            <div class="result-history-date">juil. 26 ←</div>
+          </div>
+        </div>
+        <div class="normal-zone">Zone normale : 0,4 – 4,0 mUI/L</div>
+
+        <div style="margin-top:16px">
+          <div class="actions-bar">
+            <button class="btn btn-primary">Modifier le traitement</button>
+            <button class="btn btn-alert">Contacter la patiente</button>
+            <button class="btn btn-secondary">Demander T3 / T4</button>
+            <button class="btn btn-secondary">Ajouter une note</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Grid: last consultation + treatment -->
+    <div class="grid-2">
+
+      <!-- Last consultations -->
+      <div class="card">
+        <div class="card-header">
+          <span>📋</span>
+          <span class="card-header-title">Consultations récentes</span>
+          <span class="card-header-sub">Voir tout →</span>
+        </div>
+        <div class="card-body">
+          <div class="consult-item">
+            <div class="consult-date-badge">
+              <div class="consult-date-day">14</div>
+              <div class="consult-date-mon">jan 26</div>
+            </div>
+            <div class="consult-body">
+              <div class="consult-title">Suivi hypothyroïdie</div>
+              <div class="consult-note">TSH à 5,3 — légère augmentation. Patiente asymptomatique. Recontrôle dans 6 mois. Maintien Levothyrox 75 µg.</div>
+              <span class="consult-tag tag-traitement">Traitement maintenu</span>
+            </div>
+          </div>
+          <div class="consult-item">
+            <div class="consult-date-badge">
+              <div class="consult-date-day">03</div>
+              <div class="consult-date-mon">oct 25</div>
+            </div>
+            <div class="consult-body">
+              <div class="consult-title">Bilan annuel + thyroïde</div>
+              <div class="consult-note">TSH à 4,8. Première élévation légère. Patiente se plaint de fatigue modérée. Bilan lipidique normal.</div>
+              <span class="consult-tag tag-bilan">Bilan réalisé</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Active treatments -->
+      <div class="card">
+        <div class="card-header">
+          <span>💊</span>
+          <span class="card-header-title">Traitements en cours</span>
+          <span class="card-header-sub">3 actifs</span>
+        </div>
+        <div class="card-body">
+          <div class="treatment-item">
+            <div class="treatment-icon">💊</div>
+            <div>
+              <div class="treatment-name">Levothyrox</div>
+              <div class="treatment-dose">75 µg · 1 cp/j le matin à jeun</div>
+            </div>
+            <div class="treatment-duration">Depuis jan. 19</div>
+          </div>
+          <div class="treatment-item">
+            <div class="treatment-icon">💊</div>
+            <div>
+              <div class="treatment-name">Contraception orale</div>
+              <div class="treatment-dose">Lévonorgestrel 150 µg</div>
+            </div>
+            <div class="treatment-duration">Depuis mar. 23</div>
+          </div>
+          <div class="treatment-item">
+            <div class="treatment-icon">💊</div>
+            <div>
+              <div class="treatment-name">Vitamine D</div>
+              <div class="treatment-dose">100 000 UI · 1×/trimestre</div>
+            </div>
+            <div class="treatment-duration">Depuis oct. 25</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- Notes panel -->
+  <aside class="notes-panel">
+    <div class="notes-header">
+      <span class="notes-header-icon">📝</span> Mes notes
+    </div>
+    <div class="notes-body">
+      <div class="note-item">
+        <div class="note-date">14 jan. 2026</div>
+        <div class="note-text">TSH remonte progressivement depuis l'automne. À surveiller de près. Si > 8 au prochain contrôle → adapter Levothyrox.</div>
+        <span class="note-tag ntag-attention">À surveiller</span>
+      </div>
+      <div class="note-item">
+        <div class="note-date">3 oct. 2025</div>
+        <div class="note-text">Patiente anxieuse à l'idée d'augmenter la dose. Préfère attendre un contrôle avant de modifier. Accord partagé.</div>
+        <span class="note-tag ntag-info">Préférence patiente</span>
+      </div>
+      <div class="note-item">
+        <div class="note-date">fév. 2024</div>
+        <div class="note-text">Antécédent maternel de Hashimoto. Prudence sur évolution.</div>
+      </div>
+    </div>
+  </aside>
+
+</div>
+
+<div class="probe-badge">Sonde de recherche v1 — Non validé</div>
+
+</body>
+</html>
