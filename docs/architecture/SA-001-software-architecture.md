@@ -2,8 +2,8 @@
 
 **Document ID**: SA-001
 **Title**: MedLink Reference Architecture
-**Status**: Release v1.0
-**Version**: 1.0
+**Status**: Release v1.1
+**Version**: 1.1
 
 **Depends on**:
 
@@ -139,6 +139,16 @@ Technologies remain replaceable.
 ### SA-P-009 — Convention over Configuration
 
 Architectural consistency relies primarily on shared conventions rather than custom configuration.
+
+---
+
+### SA-P-0010 — Single Architectural Responsibility
+
+Every architectural component SHALL own one and only one architectural responsibility.
+
+Responsibilities SHALL NOT overlap.
+
+Architectural boundaries exist to protect responsibilities rather than technologies.
 
 ---
 
@@ -288,3 +298,4 @@ All architectural decisions defined by this document are certified for Release v
 | Version | Status | Description |
 |---|---|---|
 | 1.0 | Release | First certified reference architecture |
+| 1.1 | Release | Added SA-P-0010 — Single Architectural Responsibility |

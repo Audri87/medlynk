@@ -1,0 +1,63 @@
+deptrac:
+  paths:
+    - ./src
+
+  layers:
+    - name: Kernel
+      collectors:
+        - type: directory
+          value: src/Kernel/.*
+
+    - name: Shared
+      collectors:
+        - type: directory
+          value: src/Shared/.*
+
+    - name: Platforms
+      collectors:
+        - type: directory
+          value: src/Platforms/.*
+
+    - name: Workspace
+      collectors:
+        - type: directory
+          value: src/Workspace/.*
+
+    - name: External
+      collectors:
+        - type: classLike
+          value: Symfony\\.*
+        - type: classLike
+          value: Doctrine\\.*
+        - type: classLike
+          value: ApiPlatform\\.*
+        - type: classLike
+          value: Psr\\.*
+
+  ruleset:
+    # Kernel depends on nothing
+    Kernel: ~
+
+    # Shared may use Kernel and vendor abstractions
+    Shared:
+      - Kernel
+      - External
+
+    # Platforms depend on Kernel and Shared — never on each other
+    Platforms:
+      - Kernel
+      - Shared
+      - External
+
+    # Workspace consumes Kernel abstractions and Shared contracts only
+    Workspace:
+      - Kernel
+      - Shared
+      - External
+
+    # External vendor — no internal dependencies allowed
+    External: ~
+
+  formatters:
+    graphviz:
+      point_to_groups: true
