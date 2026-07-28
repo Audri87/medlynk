@@ -87,7 +87,7 @@ The following components collaborate with the Core Bounded Contexts but do not o
 
 | Component | Role |
 |---|---|
-| Clinical Workspace | UI Composition Layer |
+| Clinical Workspace | Presentation Layer |
 | Search / Discovery | Read Model |
 | Business Widgets | Presentation Components |
 | External Clinical Exchange | Anti-Corruption Layer |
