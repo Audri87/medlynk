@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WS-001 — Morning Brief · Prototype v0.1</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: #F7F8FC;
+            color: #1A202C;
+            min-height: 100vh;
+        }
+
+        /* ── Prototype controls ── */
+        .proto-bar {
+            background: #1A202C;
+            color: #E2E8F0;
+            padding: 8px 16px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            flex-wrap: wrap;
+        }
+        .proto-label { opacity: 0.5; margin-right: 4px; }
+        .proto-btn {
+            background: transparent;
+            border: 1px solid rgba(255,255,255,0.25);
+            color: #CBD5E0;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 11px;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        .proto-btn.active { background: white; color: #1A202C; border-color: white; font-weight: 600; }
+
+        /* ── Layout ── */
+        .app {
+            max-width: 430px;
+            margin: 0 auto;
+            padding-bottom: 48px;
+        }
+
+        /* ── Header ── */
+        .header {
+            padding: 28px 20px 18px;
+            background: white;
+            border-bottom: 1px solid #EDF2F7;
+        }
+        .header-greeting { font-size: 24px; font-weight: 700; letter-spacing: -0.5px; }
+        .header-date { font-size: 14px; color: #718096; margin-top: 3px; }
+
+        /* ── Section wrapper ── */
+        .section { margin: 14px 16px 0; }
+        .section-label {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #A0AEC0;
+            margin-bottom: 8px;
+            padding-left: 2px;
+        }
+
+        /* ── Cards ── */
+        .card {
+            background: white;
+            border-radius: 14px;
+            overflow: hidden;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+        }
+
+        /* ── Signal zone ── */
+        .signal-head {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 16px;
+        }
+        .signal-badge {
+            width: 40px; height: 40px;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 19px;
+            flex-shrink: 0;
+        }
+        .badge-ok     { background: #F0FFF4; }
+        .badge-warn   { background: #FFFAF0; }
+        .badge-urgent { background: #FFF5F5; }
+
+        .signal-title { font-size: 16px; font-weight: 700; }
+        .title-ok     { color: #276749; }
+        .title-warn   { color: #C05621; }
+        .title-urgent { color: #C53030; }
+        .signal-sub   { font-size: 13px; color: #718096; margin-top: 2px; }
+
+        /* Signal items */
+        .divider { border-top: 1px solid #EDF2F7; }
+        .signal-item {
+            display: flex; align-items: center; gap: 14px;
+            padding: 13px 16px;
+            border-bottom: 1px solid #EDF2F7;
+            cursor: pointer;
+            transition: background 0.1s;
+        }
+        .signal-item:last-child { border-bottom: none; }
+        .signal-item:active { background: #F7F8FC; }
+
+        .dot {
+            width: 9px; height: 9px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .dot-result  { background: #4299E1; }
+        .dot-message { background: #9F7AEA; }
+        .dot-rx      { background: #ED8936; }
+
+        .si-body { flex: 1; min-width: 0; }
+        .si-type {
+            font-size: 10px; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 0.07em;
+            color: #A0AEC0;
+        }
+        .si-name  { font-size: 14px; font-weight: 600; color: #2D3748; margin-top: 2px; }
+        .si-detail { font-size: 13px; color: #718096; }
+        .si-arrow  { color: #CBD5E0; font-size: 18px; }
+
+        /* ── Urgent ── */
+        .urgent-card {
+            background: white;
+            border-radius: 14px;
+            overflow: hidden;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+            border-left: 4px solid #E53E3E;
+        }
+        .urgent-body { padding: 18px; }
+        .urgent-tag {
+            display: inline-block;
+            background: #FFF5F5; color: #C53030;
+            font-size: 10px; font-weight: 800;
+            text-transform: uppercase; letter-spacing: 0.1em;
+            padding: 3px 8px; border-radius: 4px;
+            margin-bottom: 12px;
+        }
+        .urgent-name  { font-size: 20px; font-weight: 800; letter-spacing: -0.3px; }
+        .urgent-event { font-size: 15px; color: #E53E3E; font-weight: 600; margin-top: 4px; }
+        .urgent-ctx   { font-size: 13px; color: #718096; margin-top: 10px; line-height: 1.6; }
+        .urgent-actions {
+            display: flex; gap: 8px; margin-top: 16px;
+        }
+        .btn {
+            flex: 1; padding: 11px 8px;
+            border-radius: 10px; font-size: 14px; font-weight: 700;
+            border: none; cursor: pointer; font-family: inherit;
+        }
+        .btn-primary   { background: #E53E3E; color: white; }
+        .btn-secondary { background: #EDF2F7; color: #2D3748; }
+
+        /* ── Horizon zone ── */
+        .horizon-summary {
+            display: flex; align-items: center;
+            justify-content: space-between;
+            padding: 15px 16px;
+            border-bottom: 1px solid #EDF2F7;
+        }
+        .h-count    { font-size: 16px; font-weight: 700; }
+        .h-next     { font-size: 13px; color: #718096; text-align: right; }
+        .h-next strong { color: #2D3748; font-weight: 700; }
+
+        .patient-row {
+            display: flex; align-items: center; gap: 12px;
+            padding: 12px 16px;
+            border-bottom: 1px solid #EDF2F7;
+            cursor: pointer;
+        }
+        .patient-row:last-of-type { border-bottom: none; }
+        .patient-row:active { background: #F7F8FC; }
+
+        .pt-time {
+            font-size: 13px; color: #A0AEC0;
+            width: 40px; flex-shrink: 0;
+            font-variant-numeric: tabular-nums;
+        }
+        .pt-name { flex: 1; font-size: 15px; font-weight: 500; color: #2D3748; }
+        .pt-type {
+            display: flex; align-items: center; gap: 5px;
+            font-size: 12px; font-weight: 600;
+        }
+        .pt-dot { width: 7px; height: 7px; border-radius: 50%; }
+        .pt-dot.suivi   { background: #4299E1; }
+        .pt-dot.nouveau { background: #9F7AEA; }
+        .pt-label.suivi   { color: #4299E1; font-weight: 500; }
+        .pt-label.nouveau { color: #9F7AEA; font-weight: 700; }
+
+        .pt-alert { font-size: 12px; font-weight: 700; color: #E53E3E; }
+
+        .horizon-more {
+            padding: 10px 16px;
+            font-size: 13px; color: #A0AEC0;
+            text-align: center;
+        }
+
+        /* ── Obligations zone ── */
+        .oblig-header {
+            display: flex; align-items: center;
+            justify-content: space-between;
+            padding: 13px 16px;
+            cursor: pointer;
+        }
+        .oblig-header:active { background: #F7F8FC; }
+        .oblig-left {
+            display: flex; align-items: center; gap: 10px;
+            font-size: 14px; color: #718096;
+        }
+        .oblig-chip {
+            background: #EDF2F7; color: #718096;
+            font-size: 11px; font-weight: 700;
+            padding: 2px 8px; border-radius: 10px;
+        }
+        .oblig-toggle { color: #CBD5E0; font-size: 13px; }
+        .oblig-items { display: none; border-top: 1px solid #EDF2F7; }
+        .oblig-items.open { display: block; }
+        .oblig-row {
+            display: flex; align-items: center; gap: 14px;
+            padding: 12px 16px;
+            border-bottom: 1px solid #EDF2F7;
+            cursor: pointer;
+        }
+        .oblig-row:last-child { border-bottom: none; }
+        .oblig-icon { font-size: 17px; width: 22px; text-align: center; }
+        .oblig-text { flex: 1; }
+        .oblig-name   { font-size: 14px; color: #4A5568; }
+        .oblig-detail { font-size: 12px; color: #A0AEC0; margin-top: 1px; }
+
+        /* ── State visibility ── */
+        .state { display: none; }
+        .state.active { display: block; }
+
+        /* ── Responsive ── */
+        @media (min-width: 600px) {
+            .app { max-width: 480px; }
+            .header { padding: 36px 28px 22px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="proto-bar">
+    <span class="proto-label">WS-001 · Morning Brief · v0.1 ·</span>
+    <button class="proto-btn active" onclick="setState(1,this)">① Rien de nouveau</button>
+    <button class="proto-btn" onclick="setState(2,this)">② Signaux</button>
+    <button class="proto-btn" onclick="setState(3,this)">③ Urgent</button>
+</div>
+
+<div class="app">
+
+    <div class="header">
+        <div class="header-greeting">Bonjour</div>
+        <div class="header-date" id="live-date"></div>
+    </div>
+
+    <!-- ════════════════════════════════ -->
+    <!--  STATE 1 — Nothing new          -->
+    <!-- ════════════════════════════════ -->
+    <div class="state active" id="state-1">
+
+        <div class="section">
+            <div class="section-label">Signaux</div>
+            <div class="card">
+                <div class="signal-head">
+                    <div class="signal-badge badge-ok">✓</div>
+                    <div>
+                        <div class="signal-title title-ok">Rien de nouveau</div>
+                        <div class="signal-sub">Tout est en ordre depuis hier</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-label">Aujourd'hui</div>
+            <div class="card">
+                <div class="horizon-summary">
+                    <div class="h-count">8 patients</div>
+                    <div class="h-next">Premier dans <strong>22 min</strong></div>
+                </div>
+                <div class="patient-row">
+                    <span class="pt-time">08:20</span>
+                    <span class="pt-name">Kowalski B.</span>
+                    <span class="pt-type"><span class="pt-dot suivi"></span><span class="pt-label suivi">suivi</span></span>
+                </div>
+                <div class="patient-row">
+                    <span class="pt-time">08:40</span>
+                    <span class="pt-name">Dupont M.</span>
+                    <span class="pt-type"><span class="pt-dot suivi"></span><span class="pt-label suivi">suivi</span></span>
+                </div>
+                <div class="patient-row">
+                    <span class="pt-time">09:00</span>
+                    <span class="pt-name">Chen S.</span>
+                    <span class="pt-type"><span class="pt-dot nouveau"></span><span class="pt-label nouveau">nouveau</span></span>
+                </div>
+                <div class="patient-row">
+                    <span class="pt-time">09:20</span>
+                    <span class="pt-name">Al-Rashid A.</span>
+                    <span class="pt-type"><span class="pt-dot suivi"></span><span class="pt-label suivi">suivi</span></span>
+                </div>
+                <div class="horizon-more">+ 4 patients · voir tout</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="card">
+                <div class="oblig-header" onclick="toggle('o1')">
+                    <div class="oblig-left">
+                        <span>⋯</span>
+                        <span>Tâches admin</span>
+                        <span class="oblig-chip">3</span>
+                    </div>
+                    <span class="oblig-toggle" id="o1-arrow">▾</span>
+                </div>
+                <div class="oblig-items" id="o1">
+                    <div class="oblig-row">
+                        <span class="oblig-icon">📤</span>
+                        <div class="oblig-text">
+                            <div class="oblig-name">Télétransmissions</div>
+                            <div class="oblig-detail">12 feuilles en attente</div>
+                        </div>
+                    </div>
+                    <div class="oblig-row">
+                        <span class="oblig-icon">📋</span>
+                        <div class="oblig-text">
+                            <div class="oblig-name">Compte rendu à finaliser</div>
+                            <div class="oblig-detail">Al-Rashid A.</div>
+                        </div>
+                    </div>
+                    <div class="oblig-row">
+                        <span class="oblig-icon">💳</span>
+                        <div class="oblig-text">
+                            <div class="oblig-name">Remboursements ALD</div>
+                            <div class="oblig-detail">3 dossiers</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ════════════════════════════════ -->
+    <!--  STATE 2 — Signals              -->
+    <!-- ════════════════════════════════ -->
+    <div class="state" id="state-2">
+
+        <div class="section">
+            <div class="section-label">Signaux</div>
+            <div class="card">
+                <div class="signal-head">
+                    <div class="signal-badge badge-warn">⚠</div>
+                    <div>
+                        <div class="signal-title title-warn">2 signaux</div>
+                        <div class="signal-sub">À consulter avant de commencer</div>
+                    </div>
+                </div>
+                <div class="divider">
+                    <div class="signal-item">
+                        <span class="dot dot-result"></span>
+                        <div class="si-body">
+                            <div class="si-type">Résultat reçu</div>
+                            <div class="si-name">Kowalski B.</div>
+                            <div class="si-detail">Glycémie à jeun</div>
+                        </div>
+                        <span class="si-arrow">›</span>
+                    </div>
+                    <div class="signal-item">
+                        <span class="dot dot-message"></span>
+                        <div class="si-body">
+                            <div class="si-type">Message</div>
+                            <div class="si-name">Dr. Fontaine</div>
+                            <div class="si-detail">RE : Mme Dupont</div>
+                        </div>
+                        <span class="si-arrow">›</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-label">Aujourd'hui</div>
+            <div class="card">
+                <div class="horizon-summary">
+                    <div class="h-count">8 patients</div>
+                    <div class="h-next">Premier dans <strong>22 min</strong></div>
+                </div>
+                <div class="patient-row">
+                    <span class="pt-time">08:20</span>
+                    <span class="pt-name">Kowalski B.</span>
+                    <span class="pt-type"><span class="pt-dot suivi"></span><span class="pt-label suivi">suivi</span></span>
+                    <span style="font-size:14px; margin-left:6px;">🔵</span>
+                </div>
+                <div class="patient-row">
+                    <span class="pt-time">08:40</span>
+                    <span class="pt-name">Dupont M.</span>
+                    <span class="pt-type"><span class="pt-dot suivi"></span><span class="pt-label suivi">suivi</span></span>
+                </div>
+                <div class="patient-row">
+                    <span class="pt-time">09:00</span>
+                    <span class="pt-name">Chen S.</span>
+                    <span class="pt-type"><span class="pt-dot nouveau"></span><span class="pt-label nouveau">nouveau</span></span>
+                </div>
+                <div class="patient-row">
+                    <span class="pt-time">09:20</span>
+                    <span class="pt-name">Al-Rashid A.</span>
+                    <span class="pt-type"><span class="pt-dot suivi"></span><span class="pt-label suivi">suivi</span></span>
+                </div>
+                <div class="horizon-more">+ 4 patients · voir tout</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="card">
+                <div class="oblig-header" onclick="toggle('o2')">
+                    <div class="oblig-left">
+                        <span>⋯</span>
+                        <span>Tâches admin</span>
+                        <span class="oblig-chip">3</span>
+                    </div>
+                    <span class="oblig-toggle" id="o2-arrow">▾</span>
+                </div>
+                <div class="oblig-items" id="o2">
+                    <div class="oblig-row">
+                        <span class="oblig-icon">📤</span>
+                        <div class="oblig-text">
+                            <div class="oblig-name">Télétransmissions</div>
+                            <div class="oblig-detail">12 feuilles en attente</div>
+                        </div>
+                    </div>
+                    <div class="oblig-row">
+                        <span class="oblig-icon">💊</span>
+                        <div class="oblig-text">
+                            <div class="oblig-name">Prescription à valider</div>
+                            <div class="oblig-detail">Chen S. — Amoxicilline 1g</div>
+                        </div>
+                    </div>
+                    <div class="oblig-row">
+                        <span class="oblig-icon">💳</span>
+                        <div class="oblig-text">
+                            <div class="oblig-name">Remboursements ALD</div>
+                            <div class="oblig-detail">3 dossiers</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ════════════════════════════════ -->
+    <!--  STATE 3 — Urgent               -->
+    <!-- ════════════════════════════════ -->
+    <div class="state" id="state-3">
+
+        <div class="section">
+            <div class="section-label">Signaux</div>
+            <div class="urgent-card">
+                <div class="urgent-body">
+                    <span class="urgent-tag">Action requise</span>
+                    <div class="urgent-name">Dupont M.</div>
+                    <div class="urgent-event">Hospitalisée hier soir</div>
+                    <div class="urgent-ctx">
+                        CHU Lariboisière — Service des urgences<br>
+                        Dr. Fontaine a essayé de vous joindre à 23:14
+                    </div>
+                    <div class="urgent-actions">
+                        <button class="btn btn-secondary">Voir le dossier</button>
+                        <button class="btn btn-primary">Appeler Dr. Fontaine</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-label">Aujourd'hui</div>
+            <div class="card">
+                <div class="horizon-summary">
+                    <div class="h-count">8 patients</div>
+                    <div class="h-next">Premier dans <strong>22 min</strong></div>
+                </div>
+                <div class="patient-row">
+                    <span class="pt-time">08:20</span>
+                    <span class="pt-name">Kowalski B.</span>
+                    <span class="pt-type"><span class="pt-dot suivi"></span><span class="pt-label suivi">suivi</span></span>
+                </div>
+                <div class="patient-row" style="opacity:0.45;">
+                    <span class="pt-time">08:40</span>
+                    <span class="pt-name">Dupont M.</span>
+                    <span class="pt-alert">⚠ hospitalisée</span>
+                </div>
+                <div class="patient-row">
+                    <span class="pt-time">09:00</span>
+                    <span class="pt-name">Chen S.</span>
+                    <span class="pt-type"><span class="pt-dot nouveau"></span><span class="pt-label nouveau">nouveau</span></span>
+                </div>
+                <div class="patient-row">
+                    <span class="pt-time">09:20</span>
+                    <span class="pt-name">Al-Rashid A.</span>
+                    <span class="pt-type"><span class="pt-dot suivi"></span><span class="pt-label suivi">suivi</span></span>
+                </div>
+                <div class="horizon-more">+ 4 patients · voir tout</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="card">
+                <div class="oblig-header" onclick="toggle('o3')">
+                    <div class="oblig-left">
+                        <span>⋯</span>
+                        <span>Tâches admin</span>
+                        <span class="oblig-chip">2</span>
+                    </div>
+                    <span class="oblig-toggle" id="o3-arrow">▾</span>
+                </div>
+                <div class="oblig-items" id="o3">
+                    <div class="oblig-row">
+                        <span class="oblig-icon">📤</span>
+                        <div class="oblig-text">
+                            <div class="oblig-name">Télétransmissions</div>
+                            <div class="oblig-detail">12 feuilles en attente</div>
+                        </div>
+                    </div>
+                    <div class="oblig-row">
+                        <span class="oblig-icon">💳</span>
+                        <div class="oblig-text">
+                            <div class="oblig-name">Remboursements ALD</div>
+                            <div class="oblig-detail">3 dossiers</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+    // Live date
+    (function tick() {
+        const d = new Date();
+        const days = ['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
+        const months = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+        const hh = String(d.getHours()).padStart(2,'0');
+        const mm = String(d.getMinutes()).padStart(2,'0');
+        document.getElementById('live-date').textContent =
+            `${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]} — ${hh}:${mm}`;
+        setTimeout(tick, 30000);
+    })();
+
+    // State switcher
+    function setState(n, btn) {
+        document.querySelectorAll('.state').forEach(el => el.classList.remove('active'));
+        document.getElementById('state-' + n).classList.add('active');
+        document.querySelectorAll('.proto-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+    }
+
+    // Obligations accordion
+    function toggle(id) {
+        const items = document.getElementById(id);
+        const arrow = document.getElementById(id + '-arrow');
+        const open = items.classList.toggle('open');
+        arrow.textContent = open ? '▴' : '▾';
+    }
+</script>
+
+</body>
+</html>

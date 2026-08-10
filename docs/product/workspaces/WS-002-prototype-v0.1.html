@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WS-002 — Patient Context · Prototype v0.1</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: #F7F8FC;
+            color: #1A202C;
+            min-height: 100vh;
+        }
+
+        /* ── Prototype controls ── */
+        .proto-bar {
+            background: #1A202C;
+            color: #E2E8F0;
+            padding: 8px 16px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            flex-wrap: wrap;
+        }
+        .proto-label { opacity: 0.5; margin-right: 4px; }
+        .proto-btn {
+            background: transparent;
+            border: 1px solid rgba(255,255,255,0.25);
+            color: #CBD5E0;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 11px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.12s ease;
+        }
+        .proto-btn.active { background: white; color: #1A202C; border-color: white; font-weight: 600; }
+        .proto-dr {
+            margin-left: auto;
+            opacity: 0.45;
+            font-size: 10px;
+            letter-spacing: 0.04em;
+        }
+
+        /* ── Layout ── */
+        .app {
+            max-width: 430px;
+            margin: 0 auto;
+            padding-bottom: 48px;
+        }
+
+        /* ── Patient header (Présence) ── */
+        .patient-header {
+            background: white;
+            padding: 24px 20px 18px;
+            border-bottom: 1px solid #EDF2F7;
+        }
+        .workspace-label {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #A0AEC0;
+            margin-bottom: 10px;
+        }
+        .patient-name {
+            font-size: 26px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            color: #1A202C;
+        }
+        .patient-meta {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 5px;
+            flex-wrap: wrap;
+        }
+        .patient-age { font-size: 14px; color: #718096; }
+        .visit-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            background: #EBF4FF;
+            color: #2B6CB0;
+        }
+        .visit-badge.new { background: #F0FFF4; color: #276749; }
+        .visit-badge.acte { background: #FAF5FF; color: #553C9A; }
+        .visit-badge.coord { background: #FFFFF0; color: #744210; }
+        .visit-time {
+            font-size: 13px;
+            color: #A0AEC0;
+            margin-top: 8px;
+        }
+
+        /* ── Section wrapper ── */
+        .section { margin: 14px 16px 0; }
+        .section-label {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #A0AEC0;
+            margin-bottom: 8px;
+            padding-left: 2px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .section-question {
+            font-size: 11px;
+            color: #CBD5E0;
+            font-weight: 400;
+            text-transform: none;
+            letter-spacing: 0;
+            font-style: italic;
+        }
+
+        /* ── Cards ── */
+        .card {
+            background: white;
+            border-radius: 14px;
+            overflow: hidden;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+        }
+
+        /* ── Continuité bloc ── */
+        .session-date {
+            font-size: 11px;
+            color: #A0AEC0;
+            padding: 14px 16px 0;
+        }
+        .session-summary {
+            font-size: 14px;
+            line-height: 1.55;
+            color: #2D3748;
+            padding: 8px 16px 14px;
+        }
+        .session-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            padding: 0 16px 14px;
+        }
+        .session-tag {
+            background: #EDF2F7;
+            color: #4A5568;
+            border-radius: 4px;
+            padding: 3px 8px;
+            font-size: 12px;
+        }
+        .divider { border: none; border-top: 1px solid #EDF2F7; }
+
+        /* ── Ordonnance card (DR-003) ── */
+        .ordonnance-card {
+            margin: 12px 16px 14px;
+            background: #EBF4FF;
+            border-radius: 10px;
+            padding: 14px;
+        }
+        .ordonnance-motif {
+            font-size: 16px;
+            font-weight: 700;
+            color: #1A365D;
+            margin-bottom: 4px;
+        }
+        .ordonnance-detail {
+            font-size: 13px;
+            color: #2C5282;
+            line-height: 1.4;
+        }
+        .ordonnance-prescripteur {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid rgba(44,82,130,0.15);
+        }
+        .ordonnance-prescripteur .name { font-size: 13px; font-weight: 600; color: #1A365D; }
+        .ordonnance-prescripteur .role { font-size: 12px; color: #4A6FA5; }
+
+        /* ── Terme card (DR-002) ── */
+        .terme-card {
+            margin: 12px 16px 0;
+            background: #FFFAF0;
+            border-radius: 10px;
+            padding: 14px;
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+        }
+        .terme-value {
+            font-size: 28px;
+            font-weight: 800;
+            color: #C05621;
+            letter-spacing: -0.5px;
+            line-height: 1;
+        }
+        .terme-sub {
+            font-size: 12px;
+            color: #975A16;
+            margin-top: 3px;
+        }
+        .suivi-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0;
+            margin: 12px 16px 14px;
+        }
+        .suivi-cell {
+            padding: 10px 12px;
+            border-bottom: 1px solid #EDF2F7;
+            border-right: 1px solid #EDF2F7;
+        }
+        .suivi-cell:nth-child(2n) { border-right: none; }
+        .suivi-cell:nth-last-child(-n+2) { border-bottom: none; }
+        .suivi-key { font-size: 10px; color: #A0AEC0; text-transform: uppercase; letter-spacing: 0.06em; }
+        .suivi-val { font-size: 14px; font-weight: 600; color: #2D3748; margin-top: 3px; }
+
+        /* ── Intervenants (DR-004) ── */
+        .intervenant-row {
+            padding: 12px 16px;
+            border-bottom: 1px solid #EDF2F7;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+        .intervenant-row:last-child { border-bottom: none; }
+        .intervenant-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #68D391;
+            margin-top: 5px;
+            flex-shrink: 0;
+        }
+        .intervenant-dot.pending { background: #F6AD55; }
+        .intervenant-body { flex: 1; }
+        .intervenant-role { font-size: 10px; color: #A0AEC0; text-transform: uppercase; letter-spacing: 0.06em; }
+        .intervenant-name { font-size: 14px; font-weight: 500; color: #2D3748; margin-top: 2px; }
+        .intervenant-note { font-size: 12px; color: #718096; margin-top: 3px; }
+        .intervenant-date { font-size: 11px; color: #CBD5E0; white-space: nowrap; margin-top: 4px; }
+
+        /* ── Intention bloc ── */
+        .intent-card {
+            border-left: 3px solid #805AD5;
+            border-radius: 0 14px 14px 0;
+        }
+        .intent-card .section-label { color: #805AD5; }
+        .intention-row {
+            padding: 10px 16px;
+            border-bottom: 1px solid #F7F0FF;
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+        }
+        .intention-row:last-child { border-bottom: none; }
+        .intention-arrow { color: #805AD5; font-size: 14px; margin-top: 1px; }
+        .intention-text { font-size: 14px; color: #2D3748; line-height: 1.4; }
+
+        /* ── Historique bloc ── */
+        .historique-card { border-left: 3px solid #EDF2F7; border-radius: 0 14px 14px 0; }
+        .historique-card.open { border-left-color: #4299E1; }
+        .historique-trigger {
+            width: 100%;
+            text-align: left;
+            background: none;
+            border: none;
+            padding: 13px 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-family: inherit;
+        }
+        .historique-trigger-label {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #A0AEC0;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .historique-trigger-label.deployed { color: #4299E1; }
+        .historique-count {
+            font-size: 11px;
+            color: #CBD5E0;
+            font-weight: 400;
+            text-transform: none;
+            letter-spacing: 0;
+        }
+        .historique-chevron {
+            font-size: 14px;
+            color: #CBD5E0;
+            transition: transform 0.2s ease;
+        }
+        .historique-chevron.open { transform: rotate(90deg); color: #4299E1; }
+        .historique-body { display: none; }
+        .historique-body.visible { display: block; }
+        .historique-row {
+            padding: 10px 16px;
+            border-top: 1px solid #EDF2F7;
+        }
+        .historique-date { font-size: 11px; color: #A0AEC0; margin-bottom: 3px; }
+        .historique-text { font-size: 13px; color: #4A5568; line-height: 1.45; }
+
+        /* ── DR-003 exception note ── */
+        .dr-exception-note {
+            margin: 0 16px 12px;
+            background: #EBF4FF;
+            border-radius: 6px;
+            padding: 7px 10px;
+            font-size: 11px;
+            color: #2C5282;
+            display: none;
+        }
+        .dr-exception-note.visible { display: block; }
+
+        /* ── Empty state ── */
+        .empty-state {
+            padding: 16px;
+            font-size: 13px;
+            color: #CBD5E0;
+            font-style: italic;
+        }
+
+        /* ── Footer ── */
+        .footer-note {
+            text-align: center;
+            padding: 24px 16px 0;
+            font-size: 11px;
+            color: #CBD5E0;
+            line-height: 1.6;
+        }
+
+        @media (min-width: 480px) {
+            .app { padding: 0 0 64px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Prototype controls -->
+<div class="proto-bar">
+    <span class="proto-label">Profil ·</span>
+    <button class="proto-btn" data-profile="dr001" onclick="setProfile('dr001')">Psychologue</button>
+    <button class="proto-btn" data-profile="dr002" onclick="setProfile('dr002')">Sage-femme</button>
+    <button class="proto-btn" data-profile="dr003" onclick="setProfile('dr003')">Échographiste</button>
+    <button class="proto-btn" data-profile="dr004" onclick="setProfile('dr004')">Coordinatrice</button>
+    <span class="proto-dr" id="proto-dr-badge">DR-001</span>
+</div>
+
+<div class="app">
+
+    <!-- Bloc 1 — Présence (always visible, always same patient) -->
+    <div class="patient-header">
+        <div class="workspace-label">Contexte patient</div>
+        <div class="patient-name">Marie Dubois</div>
+        <div class="patient-meta">
+            <span class="patient-age">34 ans</span>
+            <span id="visit-badge" class="visit-badge">Suivi</span>
+        </div>
+        <div class="visit-time" id="visit-time">Consultation · 10h00</div>
+    </div>
+
+    <!-- Bloc 2 — Continuité -->
+    <div class="section">
+        <div class="section-label">
+            ◎ Continuité
+            <span class="section-question" id="continuite-question">Où en étions-nous ?</span>
+        </div>
+        <div class="card" id="card-continuite">
+            <!-- dynamic -->
+        </div>
+    </div>
+
+    <!-- Bloc 3 — Intention (conditional) -->
+    <div class="section" id="section-intention" style="display:none;">
+        <div class="section-label" style="color: #805AD5;">
+            ◈ Intention
+            <span class="section-question" style="color: #D6BCFA;">Qu'avions-nous prévu ?</span>
+        </div>
+        <div class="card intent-card" id="card-intention">
+            <!-- dynamic -->
+        </div>
+    </div>
+
+    <!-- Bloc 4 — Historique -->
+    <div class="section">
+        <div class="section-label"><!-- no label here, handled inside card --></div>
+        <div class="card historique-card" id="card-historique">
+            <button class="historique-trigger" onclick="toggleHistorique()">
+                <span class="historique-trigger-label" id="historique-label">
+                    ◫ Historique
+                    <span class="historique-count" id="historique-count"></span>
+                </span>
+                <span class="historique-chevron" id="historique-chevron">›</span>
+            </button>
+            <div class="dr-exception-note" id="dr-exception-note">
+                Données historiques affichées par défaut — Display Rule DR-003
+            </div>
+            <div class="historique-body" id="historique-body">
+                <!-- dynamic -->
+            </div>
+        </div>
+    </div>
+
+    <div class="footer-note">
+        WS-002 · Patient Context · Prototype v0.1<br>
+        Q-002 — Pourquoi ce patient est-il devant moi aujourd'hui ?
+    </div>
+
+</div>
+
+<script>
+const profiles = {
+    dr001: {
+        dr: 'DR-001 · Suivi longitudinal',
+        visitBadge: 'Suivi', visitBadgeClass: '',
+        visitTime: 'Consultation · 10h00',
+        continuitéQuestion: 'Où en étions-nous ?',
+        continuitéHtml: `
+            <div class="session-date">Dernière séance — 18 juillet 2026 · il y a 17 jours</div>
+            <div class="session-summary">
+                Séance centrée sur l'anxiété de performance au travail.
+                Marie a décrit un épisode difficile avec sa responsable.
+                Humeur globalement stable, légèrement préoccupée.
+                Bon ancrage dans les exercices de pleine conscience.
+            </div>
+            <div class="session-tags">
+                <span class="session-tag">Anxiété de performance</span>
+                <span class="session-tag">Relation maternelle</span>
+                <span class="session-tag">Stabilité ↗</span>
+            </div>`,
+        showIntention: true,
+        intentionHtml: `
+            <div class="intention-row">
+                <span class="intention-arrow">→</span>
+                <span class="intention-text">Reprendre l'exercice de relaxation — résultats à évaluer</span>
+            </div>
+            <div class="intention-row">
+                <span class="intention-arrow">→</span>
+                <span class="intention-text">Explorer l'épisode avec la mère, évoqué en fin de séance</span>
+            </div>`,
+        historiqueDeployed: false,
+        historiqueCount: '18 séances · depuis jan. 2025',
+        historiqueHtml: `
+            <div class="historique-row">
+                <div class="historique-date">04 jul. 2026</div>
+                <div class="historique-text">Travail sur les mécanismes d'évitement. Progrès dans la régulation émotionnelle.</div>
+            </div>
+            <div class="historique-row">
+                <div class="historique-date">20 juin 2026</div>
+                <div class="historique-text">Épisode d'angoisse au travail. Introduction de la technique de décentrement.</div>
+            </div>
+            <div class="historique-row">
+                <div class="historique-date">06 juin 2026</div>
+                <div class="historique-text">Identification du schéma perfectionniste. Début du travail sur la tolérance à l'incertitude.</div>
+            </div>`
+    },
+
+    dr002: {
+        dr: 'DR-002 · Suivi grossesse',
+        visitBadge: 'Suivi prénatal', visitBadgeClass: '',
+        visitTime: 'Consultation · 10h00',
+        continuitéQuestion: 'Où en est la grossesse ?',
+        continuitéHtml: `
+            <div class="terme-card">
+                <div>
+                    <div class="terme-value">28 SA</div>
+                    <div class="terme-sub">+ 3 jours · Grossesse évolutive</div>
+                </div>
+            </div>
+            <div class="suivi-grid">
+                <div class="suivi-cell">
+                    <div class="suivi-key">Dernière consultation</div>
+                    <div class="suivi-val">10 juil. 2026</div>
+                </div>
+                <div class="suivi-cell">
+                    <div class="suivi-key">Prise de poids</div>
+                    <div class="suivi-val">+8,2 kg</div>
+                </div>
+                <div class="suivi-cell">
+                    <div class="suivi-key">TA dernière visite</div>
+                    <div class="suivi-val">118 / 74</div>
+                </div>
+                <div class="suivi-cell">
+                    <div class="suivi-key">Mouvements fœtaux</div>
+                    <div class="suivi-val">Réguliers ✓</div>
+                </div>
+            </div>`,
+        showIntention: true,
+        intentionHtml: `
+            <div class="intention-row">
+                <span class="intention-arrow">→</span>
+                <span class="intention-text">Vérification TA et palpation abdominale</span>
+            </div>
+            <div class="intention-row">
+                <span class="intention-arrow">→</span>
+                <span class="intention-text">Ordonnance bilan T3 — à prescrire aujourd'hui</span>
+            </div>
+            <div class="intention-row">
+                <span class="intention-arrow">→</span>
+                <span class="intention-text">Aborder la préparation à la naissance</span>
+            </div>`,
+        historiqueDeployed: false,
+        historiqueCount: '6 consultations · depuis oct. 2025',
+        historiqueHtml: `
+            <div class="historique-row">
+                <div class="historique-date">10 juil. 2026 · 24 SA</div>
+                <div class="historique-text">Écho morphologique T2 — résultats normaux. Début des cours de préparation à la naissance.</div>
+            </div>
+            <div class="historique-row">
+                <div class="historique-date">12 juin 2026 · 20 SA</div>
+                <div class="historique-text">Écho du 2e trimestre normale. Amniocentèse non retenue. Bilan T2 prescrit.</div>
+            </div>
+            <div class="historique-row">
+                <div class="historique-date">15 jan. 2026 · 8 SA</div>
+                <div class="historique-text">Déclaration de grossesse. Hypothyroïdie traitée (Lévothyrox 75 µg/j). Pas d'antécédent notable.</div>
+            </div>`
+    },
+
+    dr003: {
+        dr: 'DR-003 · Acte sur demande',
+        visitBadge: 'Acte', visitBadgeClass: 'acte',
+        visitTime: 'Échographie · 10h00',
+        continuitéQuestion: 'Quel est le motif ?',
+        continuitéHtml: `
+            <div class="ordonnance-card">
+                <div class="ordonnance-motif">Échographie abdominale</div>
+                <div class="ordonnance-detail">Douleurs épigastriques chroniques — depuis 3 semaines</div>
+                <div class="ordonnance-prescripteur">
+                    <div class="name">Dr. Lefebvre</div>
+                    <div class="role">Médecin généraliste · Prescrit le 28 juil. 2026</div>
+                </div>
+            </div>`,
+        showIntention: false,
+        intentionHtml: '',
+        historiqueDeployed: true,
+        historiqueCount: 'Antécédents pertinents',
+        historiqueHtml: `
+            <div class="historique-row">
+                <div class="historique-date">CR Dr. Lefebvre · 15 juil. 2026</div>
+                <div class="historique-text">Douleurs épigastriques persistantes depuis 3 semaines, post-prandiales. Bilan biologique normal. Pas de signe d'alarme. Échographie demandée.</div>
+            </div>
+            <div class="historique-row">
+                <div class="historique-date">Écho abdominale · 2024</div>
+                <div class="historique-text">Sans anomalie. Foie, vésicule, pancréas, rate et reins d'aspect normal.</div>
+            </div>
+            <div class="historique-row">
+                <div class="historique-date">Antécédents médicaux</div>
+                <div class="historique-text">Hypothyroïdie substituée (Lévothyrox 75 µg/j). Pas d'allergie connue. Pas d'antécédent chirurgical abdominal.</div>
+            </div>`
+    },
+
+    dr004: {
+        dr: 'DR-004 · Coordination',
+        visitBadge: 'Coordination', visitBadgeClass: 'coord',
+        visitTime: 'Point de coordination · 10h00',
+        continuitéQuestion: 'Qui intervient ?',
+        continuitéHtml: `
+            <div class="intervenant-row">
+                <div class="intervenant-dot"></div>
+                <div class="intervenant-body">
+                    <div class="intervenant-role">Médecin traitant</div>
+                    <div class="intervenant-name">Dr. Lefebvre</div>
+                    <div class="intervenant-note">Résultats IRM reçus — à discuter</div>
+                </div>
+                <div class="intervenant-date">28 juil.</div>
+            </div>
+            <div class="intervenant-row">
+                <div class="intervenant-dot"></div>
+                <div class="intervenant-body">
+                    <div class="intervenant-role">Kinésithérapie</div>
+                    <div class="intervenant-name">M. Bernard · Clinique du Sport</div>
+                    <div class="intervenant-note">Séances en cours — rachis lombaire</div>
+                </div>
+                <div class="intervenant-date">En cours</div>
+            </div>
+            <div class="intervenant-row">
+                <div class="intervenant-dot pending"></div>
+                <div class="intervenant-body">
+                    <div class="intervenant-role">Infirmière libérale</div>
+                    <div class="intervenant-name">Mme Durand</div>
+                    <div class="intervenant-note">Pansement quotidien · Ordonnance à renouveler</div>
+                </div>
+                <div class="intervenant-date">Quotidien</div>
+            </div>`,
+        showIntention: true,
+        intentionHtml: `
+            <div class="intention-row">
+                <span class="intention-arrow">→</span>
+                <span class="intention-text">Transmettre résultats IRM à M. Bernard (kiné)</span>
+            </div>
+            <div class="intention-row">
+                <span class="intention-arrow">→</span>
+                <span class="intention-text">Renouvellement ordonnance IDE avant vendredi</span>
+            </div>
+            <div class="intention-row">
+                <span class="intention-arrow">→</span>
+                <span class="intention-text">Point avec Dr. Lefebvre — retour écho abdominale</span>
+            </div>`,
+        historiqueDeployed: false,
+        historiqueCount: 'Dossier depuis mars 2025',
+        historiqueHtml: `
+            <div class="historique-row">
+                <div class="historique-date">15 juil. 2026</div>
+                <div class="historique-text">IRM lombaire — hernie discale L4-L5 confirmée. Kinésithérapie débutée.</div>
+            </div>
+            <div class="historique-row">
+                <div class="historique-date">02 juil. 2026</div>
+                <div class="historique-text">Appendicectomie. Soins infirmiers post-op démarrés à domicile (Mme Durand).</div>
+            </div>
+            <div class="historique-row">
+                <div class="historique-date">Mars 2025</div>
+                <div class="historique-text">Ouverture du dossier de coordination. Prise en charge multi-disciplinaire initiée suite à pathologie lombaire.</div>
+            </div>`
+    }
+};
+
+let historiqueOpen = false;
+
+function setProfile(key) {
+    const p = profiles[key];
+
+    // Buttons
+    document.querySelectorAll('.proto-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector(`[data-profile="${key}"]`).classList.add('active');
+
+    // DR badge
+    document.getElementById('proto-dr-badge').textContent = p.dr;
+
+    // Présence
+    const badge = document.getElementById('visit-badge');
+    badge.textContent = p.visitBadge;
+    badge.className = 'visit-badge' + (p.visitBadgeClass ? ' ' + p.visitBadgeClass : '');
+    document.getElementById('visit-time').textContent = p.visitTime;
+
+    // Continuité
+    document.getElementById('continuite-question').textContent = p.continuitéQuestion;
+    document.getElementById('card-continuite').innerHTML = p.continuitéHtml;
+
+    // Intention
+    const sectionIntention = document.getElementById('section-intention');
+    if (p.showIntention) {
+        sectionIntention.style.display = 'block';
+        document.getElementById('card-intention').innerHTML = p.intentionHtml;
+    } else {
+        sectionIntention.style.display = 'none';
+    }
+
+    // Historique
+    const cardHistorique = document.getElementById('card-historique');
+    const historiqueBody = document.getElementById('historique-body');
+    const historiqueLabel = document.getElementById('historique-label');
+    const exceptionNote = document.getElementById('dr-exception-note');
+    const chevron = document.getElementById('historique-chevron');
+
+    document.getElementById('historique-count').textContent = p.historiqueCount;
+    historiqueBody.innerHTML = p.historiqueHtml;
+
+    if (p.historiqueDeployed) {
+        historiqueOpen = true;
+        cardHistorique.classList.add('open');
+        historiqueBody.classList.add('visible');
+        historiqueLabel.classList.add('deployed');
+        exceptionNote.classList.add('visible');
+        chevron.classList.add('open');
+    } else {
+        historiqueOpen = false;
+        cardHistorique.classList.remove('open');
+        historiqueBody.classList.remove('visible');
+        historiqueLabel.classList.remove('deployed');
+        exceptionNote.classList.remove('visible');
+        chevron.classList.remove('open');
+    }
+}
+
+function toggleHistorique() {
+    historiqueOpen = !historiqueOpen;
+    const card = document.getElementById('card-historique');
+    const body = document.getElementById('historique-body');
+    const chevron = document.getElementById('historique-chevron');
+    const label = document.getElementById('historique-label');
+
+    if (historiqueOpen) {
+        card.classList.add('open');
+        body.classList.add('visible');
+        chevron.classList.add('open');
+        label.classList.add('deployed');
+    } else {
+        card.classList.remove('open');
+        body.classList.remove('visible');
+        chevron.classList.remove('open');
+        label.classList.remove('deployed');
+    }
+}
+
+// Initialize
+setProfile('dr001');
+</script>
+
+</body>
+</html>
