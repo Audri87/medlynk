@@ -2,8 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\Workspace\Application;
+namespace App\Platforms\Clinical\Application;
 
+use App\Platforms\Clinical\Application\ReadModel\Workspace;
 use App\Shared\Application\Port\Workspace\AttentionItem;
 use App\Shared\Application\Port\Workspace\AttentionProvider;
 use App\Shared\Application\Port\Workspace\WorkItem;

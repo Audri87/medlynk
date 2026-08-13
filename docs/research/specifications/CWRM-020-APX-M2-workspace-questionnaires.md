@@ -67,6 +67,7 @@ Les micro-actes de reconstruction sont-ils universels ou spécifiques au métier
 - *"Est-ce que vous diriez que vous 'reconstruisez le contexte', ou est-ce que ce terme ne correspond à rien de précis pour vous ?"* (test direct Challenge 1/7 — poser la question frontalement plutôt que déduire)
 - *"Qu'est-ce que vous cherchez en premier — la dernière visite, ou autre chose ?"* (test DR-001/002 selon profil)
 - *"Pour ce patient-là spécifiquement, l'historique complet vous sert-il, ou seulement le plus récent ?"* (test PP-006/008 et exception DR-003)
+- *"Quand vous ouvrez ce patient, quelles informations d'identité ou de sécurité avez-vous besoin de voir immédiatement, sans les chercher — et lesquelles pouvez-vous retrouver seulement si nécessaire ?"* (ajoutée le 2026-08-06 — trois prototypes successifs ont fait osciller ce point entre 1 et 3 tags sans jamais le confronter au terrain ; à trancher en entretien, pas en itération de design)
 - *"Si je vous demandais de me lister, dans l'ordre, ce que vous vérifiez systématiquement avant un patient — que diriez-vous ?"* (test de l'universalité des micro-actes, Challenge 3 — comparer la réponse entre profils "suivi" et profils "checklist")
 
 ---

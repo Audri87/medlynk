@@ -8,6 +8,9 @@ Version: 2.0
 
 | Document | Subject | Status |
 |---|---|---|
+| [MEDLINK-000](docs/MEDLINK-000-from-intuition-to-reality.md) | **The Evolution of MedLink** — from intuition to empirical product design · pourquoi plusieurs générations de documents coexistent (Vision → Théorie Produit → Validation empirique M1 → Traduction M2) · non normatif, ne gouverne rien, n'introduit aucune règle | Active |
+| [ARCH-000](docs/ARCH-000-architecture-index.md) | **Architecture Index** — table des matières : où trouver chaque règle (pipeline, statut des concepts, gel, traçabilité, gouvernance, méthode, Clinical Loop) · aucune règle propre, uniquement des pointeurs | Accepted |
+| [Engineering Handbook](docs/ENGINEERING-HANDBOOK.md) | **Engineering Handbook v1.0** — How to use the ADRs · Full event flow · Workflows · AI development instructions · Quality checklists | Active |
 | [Foundations](docs/FOUNDATIONS.md) | MedLink Founding Principles | Active |
 | [Kernel Spec v0.3](docs/kernel/KERNEL-SPEC-v0.2.md) | Platform Kernel Foundation | Active |
 | [ADR-0001](docs/adr/ADR-0001-platform-kernel.md) | Platform Kernel v0.1 — Organization → Context | Accepted |
@@ -28,6 +31,14 @@ Version: 2.0
 | [CPP-001](docs/domain/CPP-001-cross-practitioner-principle.md) | Cross-Practitioner Principle — CPT Test | Accepted |
 | [ADR-0013](docs/adr/ADR-0013-mission-driven-product-design.md) | Mission-Driven Product Design | Accepted |
 | [ADR-0014](docs/adr/ADR-0014-domain-events-platform-boundary.md) | Domain Events Shall Never Cross Platform Boundaries | Accepted |
+| [ADR-0015](docs/adr/ADR-0015-canonical-discovery-pipeline.md) | Pipeline Canonique de Product Discovery — déclare la chaîne GOV-000 (ACT→OBS→PAT→WE→PDR/PDX→Blueprint) canonique ; SEQ/RQ/INV/Requirement/Design Reasoning (CWRM-001/002) déclarés Historical | Accepted |
+| [ADR-0016](docs/adr/ADR-0016-status-of-experimental-concepts.md) | Statut des Concepts (Stable/Experimental/Historical) — table de statut ACT/OBS/PAT/WE/PDR/Cognitive Responsibility ; un concept Experimental ne peut jamais figurer comme acquis dans un jalon | Accepted |
+| [ADR-0017](docs/adr/ADR-0017-freeze-semantics.md) | Sémantique du Gel — distingue Accepted/Experimental/Frozen au niveau de la clause, pas seulement du document | Accepted |
+| [ADR-0018](docs/adr/ADR-0018-evidence-traceability.md) | Traçabilité de l'Evidence — confiance obligatoire pour tout Pattern, ancrage OBS→ACT et PAT→OBS vérifiable | Accepted |
+| [ADR-0019](docs/adr/ADR-0019-close-milestone-m1.md) | Clôture du Jalon M1 (Architecture Foundation) — Accepted, dette ARCH-DEBT-001/002 explicitement `Deferred`, `AR-001` réservé pour la revue précédant WS-006 | Accepted |
+| [ADR-0021](docs/adr/ADR-0021-document-lifecycle-legacy-governance.md) | Document Lifecycle & Legacy Governance — états Draft/Active/Experimental/Frozen/Superseded/Deprecated/Historical/Legacy/Unknown, qui peut changer un statut, politique face à plusieurs Constitutions coexistantes | Accepted |
+| [ADR-0023](docs/adr/ADR-0023-patient-context-consultation-care-record.md) | Structure Produit Figée — Dashboard (s'orienter) → WS-002 (comprendre) → WS-003 (agir) → Care Record (approfondir, à la demande) ; ouvrir un patient ≠ démarrer une consultation ; résout OQ-W-012 (WS-003) | Accepted — Frozen |
+| [ADR-0022](docs/adr/ADR-0022-m2-freeze-protocol.md) | M2 Freeze Protocol — gel de la méthode M2 pendant la construction de WS-002/004/005 (WS-003 exclu, déjà Gold Standard), instantané du workflow et de la règle de stabilité intégré, sortie conditionnée au [M2-JOURNAL-observations](docs/product/M2-JOURNAL-observations.md) | Accepted |
 | [Discovery V1 Baseline](docs/DISCOVERY-V1-BASELINE.md) | Discovery V1 Baseline — Core Domain Accepted | Accepted |
 | [DE-000](docs/process/DE-000-domain-engineering-charter.md) | Domain Engineering Charter | Active |
 | [DE-P-001](docs/process/DE-P-001-human-reasoning-boundary.md) | Human Reasoning Is Outside the Domain | Accepted |
@@ -41,6 +52,12 @@ Version: 2.0
 | [DR-001](docs/DR-001-decision-register-v1.md) | Decision Register V1 — All Frozen Domain Decisions | Active |
 | [HR-001](docs/HR-001-hotspot-register-v1.md) | Hotspot Register V1 — All Unresolved Domain Questions | Active |
 | [ADR-SA-005](docs/architecture/ADR-SA-005-application-cqrs-decisions.md) | **Architectural Decision Register** — Application & CQRS Architecture — Approved decisions (D-001→D-009) · Normative basis for SA-005 · ADR = approved rationale / SA = normative rules | Approved |
+| [ADR-SA-008](docs/architecture/ADR-SA-008-model-existence-principle.md) | Model Existence Principle — When a Class Is Justified — Need-to-Know criterion · No Projection Row · DBAL → DTO direct mapping | Approved |
+| [ADR-SA-009](docs/architecture/ADR-SA-009-persistence-technology-policy.md) | Persistence Technology Policy — DBAL over ORM · Direct mapping · No Projection Row · UPSERT mandatory · 10 non-negotiable rules | Approved |
+| [ADR-SA-010](docs/architecture/ADR-SA-010-reliable-event-delivery.md) | Reliable Event Delivery — Outbox Pattern · At-least-once · Idempotent Projectors · Replay capability · Dead Letter Queue | Approved |
+| [ADR-SA-011](docs/architecture/ADR-SA-011-read-model-strategy.md) | Read Model Strategy — Keyset pagination · Index ownership · One Projection per access pattern · Performance policy | Approved |
+| [ADR-SA-012](docs/architecture/ADR-SA-012-platform-integration.md) | Platform Integration — Integration Events · Ownership table · Versioning · integration.bus · No cross-platform DB access | Approved |
+| [ADR-SA-013](docs/architecture/ADR-SA-013-domain-event-publication-outbox.md) | Domain Event Publication & Outbox Pattern — DomainEventInterface · EventEnvelope · EventEnvelopeFactory · OutboxRepository · Middleware orchestration · 52 normative rules | Accepted |
 
 ---
 
@@ -409,29 +426,24 @@ src/
 │   │   ├── Domain/
 │   │   ├── Application/
 │   │   ├── Infrastructure/
-│   │   └── UI/
+│   │   └── Presentation/
 │   ├── Collaboration/           # Collaboration Platform
 │   ├── Trust/                   # Trust Platform — consent, compliance, traceability
 │   ├── Identity/                # Identity Platform
 │   ├── Learning/                # Future
 │   └── Conference/              # Future
 │
-├── Shared/                      # Cross-platform infrastructure
-│   ├── Domain/
-│   │   ├── Event/
-│   │   ├── ValueObject/
-│   │   └── Exception/
-│   ├── Application/
-│   │   └── Event/
-│   │       └── DomainEvent.php  # Technical event — NOT a Kernel concept
-│   └── Infrastructure/
-│       └── Messenger/
-│           └── EventBus.php
-│
-└── Workspace/                   # Workspace Engine — projection generator
+└── Shared/                      # Cross-platform infrastructure
     ├── Domain/
+    │   ├── Event/
+    │   ├── ValueObject/
+    │   └── Exception/
     ├── Application/
+    │   └── Event/
+    │       └── DomainEvent.php  # Technical event — NOT a Kernel concept
     └── Infrastructure/
+        └── Messenger/
+            └── EventBus.php
 ```
 
 ## BusinessEvent vs DomainEvent

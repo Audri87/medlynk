@@ -28,8 +28,31 @@ services:
         App\Shared\Application\Port\Workspace\WorkItemProvider:
             tags: ['medlink.work_item.provider']
 
-    App\Workspace\Application\WorkspaceAssembler:
+    App\Platforms\Clinical\Application\WorkspaceAssembler:
         arguments:
             $contributors: !tagged_iterator medlink.workspace.contributor
             $attentionProviders: !tagged_iterator medlink.attention.provider
             $workItemProviders: !tagged_iterator medlink.work_item.provider
+
+    # Domain Event Pipeline — ADR-SA-013
+    App\Shared\Application\Port\DomainEventCollectorPort:
+        alias: App\Shared\Infrastructure\Messenger\DomainEventCollector
+
+    App\Shared\Application\Port\OutboxWriterPort:
+        alias: App\Shared\Infrastructure\Persistence\OutboxRepository
+
+    App\Shared\Application\Port\CorrelationIdProviderPort:
+        alias: App\Shared\Infrastructure\Http\CorrelationIdContextAdapter
+
+    App\Shared\Infrastructure\Eventing\EventTypeResolver:
+        factory: ['App\Platforms\Clinical\Infrastructure\Eventing\ClinicalEventTypeRegistry', 'createResolver']
+
+    App\Shared\Infrastructure\Eventing\EventEnvelopeFactory:
+        arguments:
+            $platformId: 'clinical'
+
+    # Facade bus wiring
+    App\Platforms\Clinical\Application\ClinicalContributionFacade:
+        arguments:
+            $commandBus: '@command.bus'
+            $queryBus: '@query.bus'

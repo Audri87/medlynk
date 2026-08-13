@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Platforms\Clinical\Domain\ClinicalContribution\Event;
 
+use App\Shared\Domain\Event\DomainEventInterface;
 use App\Platforms\Clinical\Domain\ClinicalContribution\ValueObject\CareRecordId;
 use App\Platforms\Clinical\Domain\ClinicalContribution\ValueObject\ClinicalContributionId;
 use App\Platforms\Clinical\Domain\ClinicalContribution\ValueObject\ContributionTimestamp;
@@ -12,7 +13,7 @@ use App\Platforms\Clinical\Domain\ClinicalContribution\ValueObject\ContributionT
  * Recorded when a Draft contribution fails one or more domain invariant checks.
  * The contribution remains in Draft. Immutable fact.
  */
-final readonly class ClinicalContributionValidationFailed
+final readonly class ClinicalContributionValidationFailed implements DomainEventInterface
 {
     public function __construct(
         public readonly ClinicalContributionId $clinicalContributionId,

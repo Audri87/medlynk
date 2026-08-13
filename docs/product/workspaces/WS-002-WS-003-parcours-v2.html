@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MedLink — Parcours principal V2</title>
+<!--
+    Statut interne (non affiché au praticien) :
+    Implémente ADR-0023 (Dashboard → WS-002 → WS-003 → Care Record).
+    Style visuel repris intégralement de probe-dossier-v1.html (mêmes tokens de couleur,
+    même typographie, même bandeau patient) à la demande du Product Owner, pour un test praticien.
+
+    Écart assumé et signalé (pas silencieux) : les compteurs "7 Traitements / 2 Alertes / 12 ans
+    Suivi" du bandeau de probe-dossier-v1.html ne sont PAS repris dans le bandeau WS-002 ci-dessous.
+    Cette densité avait déjà été identifiée en session comme relevant du Care Record (profondeur du
+    dossier), pas de WS-002 ("Patient Context" — Non-Goals ADR-0023 §3 : "WS-002 ne doit pas devenir
+    un dossier médical complet"). Ces compteurs sont réutilisés uniquement sur l'écran Care Record,
+    où ils ont leur place.
+
+    Corrections structurelles de la v2 précédente, conservées :
+    - Retour Care Record dépend de l'origine (WS-002 ou WS-003).
+    - Grid Lookup : Care Record est un point d'entrée unique (Résultats/Historique en sont des
+      sous-sections, pas des accès parallèles).
+
+    Toujours volontairement non tranché : densité des tags du bandeau patient (voir
+    CWRM-020-APX-M2-workspace-questionnaires.md §2 — question ajoutée le 2026-08-06).
+    Toujours absent : Mode Interruption/Recovery (5e mode de WS-003, ADR-0023 §4).
+-->
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f4f5f7;
+    --surface: #ffffff;
+    --sidebar-bg: #1a2233;
+    --sidebar-text: #8fa3bf;
+    --sidebar-active-bg: #2d3f5c;
+    --accent: #2563eb;
+    --alert: #dc2626;
+    --alert-bg: #fef2f2;
+    --alert-border: #fecaca;
+    --warn: #d97706;
+    --warn-bg: #fffbeb;
+    --ok: #16a34a;
+    --ok-bg: #f0fdf4;
+    --purple: #7c3aed;
+    --purple-bg: #ede9fe;
+    --text: #111827;
+    --text-muted: #6b7280;
+    --text-subtle: #9ca3af;
+    --border: #e5e7eb;
+    --radius: 8px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  /* ── Top bar ── */
+  .topbar {
+    background: var(--sidebar-bg);
+    padding: 0 20px;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .topbar-logo { font-weight: 700; font-size: 16px; color: #fff; letter-spacing: -0.3px; }
+  .topbar-logo span { color: #60a5fa; }
+  .topbar-sep { width: 1px; height: 20px; background: #2d3f5c; }
+  .topbar-back { color: #8fa3bf; font-size: 13px; cursor: pointer; background: none; border: none; font-family: inherit; }
+  .topbar-back:hover { color: #c9d8ed; }
+  .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 16px; }
+  .topbar-practitioner { font-size: 13px; color: #8fa3bf; }
+  .topbar-avatar {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: #2d3f5c; color: #60a5fa;
+    font-weight: 700; font-size: 12px;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  /* ── Patient banner ── */
+  .patient-banner {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .patient-avatar {
+    width: 52px; height: 52px; border-radius: 50%;
+    background: #dbeafe; color: var(--accent);
+    font-weight: 700; font-size: 18px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .patient-info { flex: 1; }
+  .patient-name { font-size: 18px; font-weight: 700; }
+  .patient-meta { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+  .patient-tags { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+  .patient-tag {
+    font-size: 11px; font-weight: 500; padding: 2px 8px;
+    border-radius: 12px; border: 1px solid;
+  }
+  .tag-condition { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
+  .tag-alert     { background: var(--alert-bg); color: var(--alert); border-color: var(--alert-border); }
+  .tag-allergy   { background: #fff7ed; color: #c2410c; border-color: #fed7aa; }
+
+  .banner-stats { display: flex; gap: 24px; flex-shrink: 0; }
+  .banner-stat { text-align: center; }
+  .banner-stat-value { font-size: 20px; font-weight: 700; }
+  .banner-stat-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-subtle); }
+
+  .page { max-width: 1040px; margin: 0 auto; padding: 24px; }
+
+  /* ── Dashboard : layout avec sidebar (probe-dashboard-v2.html, repris tel quel) ── */
+  .layout { display: flex; align-items: flex-start; }
+  .sidebar {
+    width: 200px; flex-shrink: 0; background: var(--sidebar-bg);
+    padding: 16px 0; display: flex; flex-direction: column; gap: 2px;
+    min-height: calc(100vh - 52px);
+  }
+  .sidebar-section-label {
+    font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+    color: #4a5e7a; padding: 12px 16px 4px;
+  }
+  .sidebar-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 16px; color: var(--sidebar-text); cursor: pointer; font-size: 13px;
+  }
+  .sidebar-item:hover { background: rgba(255,255,255,0.05); color: #c9d8ed; }
+  .sidebar-item.active { background: var(--sidebar-active-bg); color: white; font-weight: 500; }
+  .sidebar-item .icon { font-size: 15px; opacity: 0.8; }
+  .sidebar-badge {
+    margin-left: auto; background: var(--alert); color: white;
+    font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 10px;
+  }
+  .sidebar-badge-warn {
+    margin-left: auto; background: var(--warn); color: white;
+    font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 10px;
+  }
+  .dash-main { flex: 1; padding: 24px; }
+
+  /* ── Planning : contexte par rendez-vous mis en bloc (probe-dashboard-v2.html) ── */
+  .schedule-item {
+    display: flex; align-items: stretch; border-bottom: 1px solid var(--border);
+    cursor: pointer; transition: background 0.1s;
+  }
+  .schedule-item:last-child { border-bottom: none; }
+  .schedule-item:hover { background: #f9fafb; }
+  .schedule-time {
+    flex-shrink: 0; width: 56px; padding: 14px 8px 12px 16px;
+    font-size: 13px; font-weight: 600; color: var(--text-muted);
+  }
+  .schedule-body { flex: 1; padding: 11px 8px 11px 0; }
+  .schedule-name { font-weight: 600; font-size: 13px; }
+  .schedule-tags { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 4px; }
+  .schedule-reason { display: inline-block; font-size: 11px; padding: 2px 7px; border-radius: 4px; font-weight: 500; }
+  .reason-suivi { background: #dbeafe; color: #1d4ed8; }
+  .reason-premier { background: #d1fae5; color: #065f46; }
+  .schedule-mini-context {
+    font-size: 11px; color: var(--text-muted); margin-top: 6px; line-height: 1.4;
+    padding: 5px 8px; background: #f8fafc; border-left: 2px solid var(--border); border-radius: 0 3px 3px 0;
+  }
+  .schedule-mini-context.has-alert { background: #fff8f8; border-left-color: var(--alert); color: #7f1d1d; }
+  .schedule-right {
+    flex-shrink: 0; padding: 12px 16px; display: flex; flex-direction: column;
+    align-items: flex-end; justify-content: center; gap: 4px;
+  }
+  .schedule-age { font-size: 12px; color: var(--text-subtle); }
+  .alert-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--alert); }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden;
+  }
+  .card + .card { margin-top: 12px; }
+  .card-header {
+    padding: 12px 16px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .card-header-title { font-weight: 600; font-size: 13px; }
+  .card-header-sub { font-size: 12px; color: var(--text-muted); margin-left: auto; }
+  .card-body { padding: 16px; }
+  .muted { color: var(--text-muted); }
+
+  .grid-2 { display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; align-items: start; }
+
+  .list-row {
+    border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 12px 14px; display: flex; justify-content: space-between; align-items: center;
+  }
+  .list-row + .list-row { margin-top: 8px; }
+
+  .btn {
+    padding: 9px 15px; border-radius: 6px;
+    font-size: 13px; font-weight: 500; cursor: pointer;
+    border: 1px solid var(--border); background: var(--surface); color: var(--text);
+    text-align: center; transition: opacity 0.15s; font-family: inherit;
+  }
+  .btn:hover { opacity: 0.8; }
+  .btn-primary { background: var(--accent); color: white; border-color: var(--accent); font-weight: 600; }
+  .btn-link { border: none; background: none; color: var(--accent); padding: 0; font-weight: 500; }
+
+  /* ── WS-002 blocks ── */
+  .ws2-blocks { display: grid; gap: 10px; margin-top: 16px; }
+  .ws2-block { border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; background: var(--surface); }
+  .ws2-block-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-subtle); margin-bottom: 4px; }
+  .ws2-block-body { font-size: 14px; }
+  .ws2-block.collapsed { opacity: 0.7; }
+
+  .cta-row {
+    margin-top: 22px; border-top: 1px solid var(--border); padding-top: 20px;
+    display: flex; justify-content: space-between; align-items: center; gap: 20px;
+  }
+  .cta-label { font-weight: 600; font-size: 14px; }
+  .cta-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .dossier-link-row { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
+
+  /* ── WS-003 modes ── */
+  .mode-shell { min-height: 480px; display: grid; place-items: center; text-align: center; }
+  .mode-hidden { display: none; }
+  .mode-title { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+  .mode-actions { display: flex; gap: 16px; justify-content: center; margin-top: 32px; }
+  .mode-action {
+    width: 96px; height: 88px; border: 1px solid var(--border); background: var(--surface);
+    border-radius: 12px; font-size: 24px; cursor: pointer; font-family: inherit;
+  }
+  .mode-action:hover { border-color: var(--accent); }
+  .mode-action small { display: block; font-size: 11px; color: var(--text-muted); margin-top: 6px; }
+  .mode-box { max-width: 640px; width: 100%; text-align: left; }
+  textarea {
+    width: 100%; min-height: 130px; padding: 12px; border: 1px solid var(--border);
+    border-radius: 6px; font: inherit; resize: vertical;
+  }
+  .lookup-grid { margin: 16px 0; }
+  .lookup-entry {
+    border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px;
+    display: flex; justify-content: space-between; align-items: center; background: var(--surface);
+  }
+  .consultation-footer {
+    border-top: 1px solid var(--border); padding: 14px 24px;
+    display: flex; justify-content: space-between; align-items: center;
+    max-width: 1040px; margin: 0 auto;
+  }
+
+  /* ── Care Record ── */
+  .record-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
+  .record-card { border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; background: var(--surface); }
+  .record-card-icon { font-size: 18px; margin-bottom: 6px; }
+
+  .hidden { display: none; }
+  .breadcrumb { font-size: 12px; color: var(--text-subtle); margin-bottom: 16px; }
+
+  .closed-screen { text-align: center; padding: 90px 20px; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-logo">Med<span>Link</span></div>
+  <div class="topbar-sep" id="topbar-sep"></div>
+  <button class="topbar-back hidden" id="topbar-back"></button>
+  <div class="topbar-right">
+    <div class="topbar-practitioner">Dr. A. Durand</div>
+    <div class="topbar-avatar">AD</div>
+  </div>
+</div>
+
+<!-- ═══ DASHBOARD ═══ -->
+<section id="dash" class="page" style="max-width:none;padding:0">
+  <div class="layout">
+
+    <!-- Sidebar — reprise telle quelle de probe-dashboard-v2.html, ajoutée au Dashboard uniquement -->
+    <nav class="sidebar">
+      <div class="sidebar-section-label">Navigation</div>
+      <div class="sidebar-item active"><span class="icon">🏠</span> Mon espace</div>
+      <div class="sidebar-item"><span class="icon">📅</span> Planning</div>
+      <div class="sidebar-item"><span class="icon">🔔</span> Nouveautés<span class="sidebar-badge">4</span></div>
+      <div class="sidebar-item"><span class="icon">💬</span> Messages<span class="sidebar-badge-warn">1</span></div>
+      <div class="sidebar-section-label">Patients</div>
+      <div class="sidebar-item"><span class="icon">🔍</span> Rechercher</div>
+      <div class="sidebar-item"><span class="icon">📝</span> À traiter</div>
+      <div class="sidebar-section-label">Travail</div>
+      <div class="sidebar-item"><span class="icon">📄</span> Ordonnances</div>
+      <div class="sidebar-item"><span class="icon">📬</span> Résultats</div>
+      <div class="sidebar-item"><span class="icon">📋</span> Consultations</div>
+    </nav>
+
+    <div class="dash-main">
+      <div class="breadcrumb">Mon espace</div>
+      <h1 style="font-size:22px;margin-bottom:4px">Bonjour, Dr. Durand</h1>
+      <p class="muted" style="margin-bottom:20px">Votre journée et ce qui mérite votre attention.</p>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header"><span>🗓️</span><span class="card-header-title">Planning du jour</span></div>
+          <div>
+            <div class="schedule-item" onclick="openPatient()">
+              <div class="schedule-time">10:30</div>
+              <div class="schedule-body">
+                <div class="schedule-name">Michel Rousseau</div>
+                <div class="schedule-tags"><span class="schedule-reason reason-suivi">Suivi diabète</span></div>
+                <div class="schedule-mini-context has-alert">HbA1c 8,1 % — en hausse · Discuter ajustement traitement</div>
+              </div>
+              <div class="schedule-right">
+                <div class="schedule-age">58 ans</div>
+                <div class="alert-dot"></div>
+              </div>
+            </div>
+            <div class="schedule-item">
+              <div class="schedule-time">11:15</div>
+              <div class="schedule-body">
+                <div class="schedule-name">Sophie Martin</div>
+                <div class="schedule-tags"><span class="schedule-reason reason-suivi">Consultation</span></div>
+                <div class="schedule-mini-context">Suivi hypothyroïdie · TSH dans la cible depuis mars</div>
+              </div>
+              <div class="schedule-right"><div class="schedule-age">41 ans</div></div>
+            </div>
+            <div class="schedule-item">
+              <div class="schedule-time">14:00</div>
+              <div class="schedule-body">
+                <div class="schedule-name">Jean Morel</div>
+                <div class="schedule-tags"><span class="schedule-reason reason-premier">Premier contact</span></div>
+                <div class="schedule-mini-context">Aucun historique clinique disponible · Vous commencez la mémoire de ce patient</div>
+              </div>
+              <div class="schedule-right"><div class="schedule-age">36 ans</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span>🔔</span><span class="card-header-title">À votre attention</span></div>
+          <div class="card-body">
+            <div class="list-row"><div><b>3 éléments en suspens</b><br><span class="muted">À revoir aujourd'hui</span></div></div>
+            <div class="list-row"><div><b>2 transmissions</b><br><span class="muted">À réaliser</span></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══ WS-002 — PATIENT CONTEXT ═══ -->
+<!--
+  Lecture A (validée par le Product Owner, 2026-08-13) : la sidebar ci-dessous reprend la navigation
+  "dossier" de probe-dossier-v1.html, mais aucun de ses items ne change le contenu de cet écran.
+  Chaque clic (sauf « Résumé », qui représente WS-002 lui-même) appelle openRecord('patient') et
+  QUITTE WS-002 pour ouvrir le Care Record — jamais un changement de tab interne. C'est ce qui évite
+  la Lecture B écartée (WS-002 devenant une tab parmi d'autres du dossier), interdite par
+  ADR-0023 §7 Règle 3 et §9.
+-->
+<div id="patient-banner" class="patient-banner hidden">
+  <div class="patient-avatar">MR</div>
+  <div class="patient-info">
+    <div class="patient-name">Michel Rousseau</div>
+    <div class="patient-meta">58 ans · né le 14/03/1968 · Médecin traitant : Dr. Durand · Suivi depuis 2014 · Consultation prévue 10:30</div>
+    <div class="patient-tags">
+      <span class="patient-tag tag-allergy">Allergie pénicilline</span>
+      <span class="patient-tag tag-condition">Diabète type 2</span>
+      <span class="patient-tag tag-condition">HTA</span>
+    </div>
+  </div>
+</div>
+<!-- Ancre technique pour show()/titles — le topbar « ← Mon espace » fait déjà office de repère, pas de breadcrumb dupliqué ici -->
+<section id="patient" class="hidden" style="display:none"></section>
+<section id="patient-body" class="hidden" style="max-width:none;padding:0">
+  <div class="layout">
+
+    <!-- Sidebar "dossier" — navigation, PAS des tabs : chaque item (hors Résumé) ouvre le Care Record -->
+    <nav class="sidebar">
+      <div class="sidebar-section-label">Dossier</div>
+      <div class="sidebar-item active"><span class="icon">📋</span> Résumé</div>
+      <div class="sidebar-item" onclick="openRecord('patient')"><span class="icon">🕐</span> Historique</div>
+      <div class="sidebar-item" onclick="openRecord('patient')"><span class="icon">🧪</span> Résultats<span class="sidebar-badge">2</span></div>
+      <div class="sidebar-item" onclick="openRecord('patient')"><span class="icon">💊</span> Ordonnances</div>
+      <div class="sidebar-item" onclick="openRecord('patient')"><span class="icon">📎</span> Documents</div>
+      <div class="sidebar-section-label">Histoire</div>
+      <div class="sidebar-item" onclick="openRecord('patient')"><span class="icon">🏥</span> Antécédents</div>
+      <div class="sidebar-item" onclick="openRecord('patient')"><span class="icon">👨‍👩‍👧</span> Famille</div>
+      <div class="sidebar-item" onclick="openRecord('patient')"><span class="icon">💉</span> Vaccins</div>
+      <div class="sidebar-section-label">Mon travail</div>
+      <div class="sidebar-item" onclick="openRecord('patient')"><span class="icon">📝</span> Mes notes</div>
+      <div class="sidebar-item" onclick="openRecord('patient')"><span class="icon">📬</span> Courriers</div>
+    </nav>
+
+    <!-- Corps = WS-002, inchangé -->
+    <div class="dash-main">
+      <div class="ws2-blocks">
+        <div class="ws2-block">
+          <div class="ws2-block-label">1 · Présence</div>
+          <div class="ws2-block-body">Patient connu · motif du jour : suivi trimestriel diabète.</div>
+        </div>
+        <div class="ws2-block">
+          <div class="ws2-block-label">2 · Continuité</div>
+          <div class="ws2-block-body">Dernière séance le 18 juin — HbA1c 8,1 %, discussion observance.</div>
+        </div>
+        <div class="ws2-block">
+          <div class="ws2-block-label">3 · Intention</div>
+          <div class="ws2-block-body">Objectif documenté : revoir si HbA1c &gt; 9 % → discuter insuline.</div>
+        </div>
+        <div class="ws2-block collapsed">
+          <div class="ws2-block-label">4 · Historique ▸</div>
+          <div class="ws2-block-body muted">Détails historiques masqués par défaut.</div>
+        </div>
+      </div>
+      <div class="cta-row">
+        <div>
+          <div class="cta-label">Prêt à commencer ?</div>
+          <div class="cta-sub">La consultation ne s'ouvre qu'après votre action.</div>
+        </div>
+        <button class="btn btn-primary" onclick="show('ws3')">Démarrer la consultation →</button>
+      </div>
+      <div class="dossier-link-row">
+        <button class="btn-link" onclick="openRecord('patient')">Consulter le dossier complet →</button>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══ WS-003 — CONSULTATION ═══ -->
+<section id="ws3" class="page hidden">
+  <div class="breadcrumb">Mon espace → Michel Rousseau → Consultation</div>
+  <div class="card">
+    <div class="card-body">
+
+      <div id="presence" class="mode-shell">
+        <div>
+          <div class="mode-title">Présence</div>
+          <p class="muted">Le logiciel reste silencieux pendant l'écoute.</p>
+          <div class="mode-actions">
+            <button class="mode-action" onclick="mode('capture')">⊞<small>Capturer</small></button>
+            <button class="mode-action" onclick="mode('lookup')">◎<small>Lookup</small></button>
+            <button class="mode-action" onclick="mode('follow')">→<small>Suivi</small></button>
+          </div>
+        </div>
+      </div>
+
+      <div id="capture" class="mode-shell mode-hidden">
+        <div class="mode-box">
+          <h2>Capture</h2>
+          <p class="muted" style="margin:6px 0 14px">Capture ponctuelle, puis retour à la présence.</p>
+          <textarea placeholder="Noter quelque chose…"></textarea>
+          <div style="margin-top:14px"><button class="btn btn-primary" onclick="mode('presence')">Retour</button></div>
+        </div>
+      </div>
+
+      <div id="lookup" class="mode-shell mode-hidden">
+        <div class="mode-box">
+          <h2>Lookup</h2>
+          <p class="muted" style="margin:6px 0 0">Approfondir uniquement si nécessaire.</p>
+          <div class="lookup-grid">
+            <div class="lookup-entry">
+              <div>
+                <b>Care Record</b>
+                <div class="muted" style="font-size:12px;margin-top:2px">Dossier complet — historique, résultats, traitements, documents.</div>
+              </div>
+              <button class="btn" onclick="openRecord('ws3')">Ouvrir</button>
+            </div>
+          </div>
+          <p class="muted" style="font-size:12px">Résultats et Historique sont des sections du Care Record, pas des accès séparés.</p>
+          <div style="margin-top:16px"><button class="btn" onclick="mode('presence')">Retour</button></div>
+        </div>
+      </div>
+
+      <div id="follow" class="mode-shell mode-hidden">
+        <div>
+          <h2>Marquer pour suivi</h2>
+          <p class="muted" style="margin:6px 0 14px">Action ponctuelle.</p>
+          <button class="btn" onclick="mode('presence')">Retour</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+<div id="ws3-footer" class="consultation-footer hidden">
+  <span class="muted">Consultation en cours · 00:01</span>
+  <button class="btn btn-primary" onclick="show('closed')">Clôturer</button>
+</div>
+
+<!-- ═══ CARE RECORD ═══ -->
+<section id="record" class="page hidden">
+  <div class="breadcrumb" id="record-crumb">Mon espace → Michel Rousseau → Care Record</div>
+  <div class="patient-banner" style="border:1px solid var(--border);border-radius:var(--radius);margin-bottom:16px">
+    <div class="patient-avatar">MR</div>
+    <div class="patient-info">
+      <div class="patient-name">Michel Rousseau</div>
+      <div class="patient-meta">58 ans · né le 14/03/1968 · Suivi depuis 2014</div>
+    </div>
+    <div class="banner-stats">
+      <div class="banner-stat"><div class="banner-stat-value" style="color:var(--accent)">7</div><div class="banner-stat-label">Traitements</div></div>
+      <div class="banner-stat"><div class="banner-stat-value" style="color:var(--warn)">2</div><div class="banner-stat-label">Alertes</div></div>
+      <div class="banner-stat"><div class="banner-stat-value" style="color:var(--text-muted)">12 ans</div><div class="banner-stat-label">Suivi</div></div>
+    </div>
+  </div>
+  <p class="muted" style="margin-bottom:4px">La profondeur clinique est disponible à la demande.</p>
+  <div class="record-grid">
+    <div class="record-card"><div class="record-card-icon">🕐</div><b>Historique clinique</b><p class="muted" style="font-size:12px;margin-top:4px">Événements et contexte clinique.</p></div>
+    <div class="record-card"><div class="record-card-icon">🧪</div><b>Résultats</b><p class="muted" style="font-size:12px;margin-top:4px">Résultats disponibles.</p></div>
+    <div class="record-card"><div class="record-card-icon">💊</div><b>Traitements / prescriptions</b><p class="muted" style="font-size:12px;margin-top:4px">Informations disponibles.</p></div>
+    <div class="record-card"><div class="record-card-icon">📎</div><b>Documents</b><p class="muted" style="font-size:12px;margin-top:4px">Documents associés.</p></div>
+  </div>
+  <div style="margin-top:20px"><button class="btn btn-primary" id="record-back" onclick="show(recordOrigin)">← Retour</button></div>
+</section>
+
+<!-- ═══ CLÔTURE ═══ -->
+<section id="closed" class="page hidden">
+  <div class="card closed-screen">
+    <h1 style="font-size:22px;margin-bottom:8px">Consultation clôturée</h1>
+    <p class="muted" style="margin-bottom:24px">La journée redevient votre point d'ancrage.</p>
+    <button class="btn btn-primary" onclick="show('dash')">Retour à Mon espace</button>
+  </div>
+</section>
+
+<script>
+const ids = ['dash','patient','ws3','record','closed'];
+const titles = {
+  dash:   { back: null },
+  patient:{ back: { label: '← Mon espace', action: () => show('dash') } },
+  ws3:    { back: null },
+  record: { back: null }, // géré dynamiquement par openRecord()
+  closed: { back: null }
+};
+let recordOrigin = 'patient';
+
+function setTopbarBack(cfg) {
+  const btn = document.getElementById('topbar-back');
+  const sep = document.getElementById('topbar-sep');
+  if (cfg) {
+    btn.textContent = cfg.label;
+    btn.onclick = cfg.action;
+    btn.classList.remove('hidden');
+    sep.classList.remove('hidden');
+  } else {
+    btn.classList.add('hidden');
+    sep.classList.add('hidden');
+  }
+}
+
+function show(id) {
+  ['dash','patient','patient-banner','patient-body','ws3','ws3-footer','record','closed']
+    .forEach(x => document.getElementById(x).classList.add('hidden'));
+
+  document.getElementById(id).classList.remove('hidden');
+  if (id === 'patient') {
+    document.getElementById('patient-banner').classList.remove('hidden');
+    document.getElementById('patient-body').classList.remove('hidden');
+  }
+  if (id === 'ws3') {
+    document.getElementById('ws3-footer').classList.remove('hidden');
+  }
+
+  const cfg = titles[id].back;
+  setTopbarBack(cfg);
+}
+
+function openPatient() { show('patient'); }
+
+function openRecord(origin) {
+  recordOrigin = origin;
+  document.getElementById('record-crumb').textContent =
+    origin === 'ws3'
+      ? 'Mon espace → Michel Rousseau → Consultation → Care Record'
+      : 'Mon espace → Michel Rousseau → Care Record';
+  document.getElementById('record-back').textContent =
+    origin === 'ws3' ? '← Retour à la consultation' : '← Retour à Michel Rousseau';
+  show('record');
+  setTopbarBack({
+    label: origin === 'ws3' ? '← Retour à la consultation' : '← Retour à Michel Rousseau',
+    action: () => show(recordOrigin)
+  });
+}
+
+function mode(id) {
+  ['presence','capture','lookup','follow'].forEach(x =>
+    document.getElementById(x).classList.add('mode-hidden'));
+  document.getElementById(id).classList.remove('mode-hidden');
+}
+
+show('dash');
+</script>
+</body>
+</html>

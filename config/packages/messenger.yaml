@@ -5,6 +5,7 @@ framework:
             command.bus:
                 middleware:
                     - doctrine_transaction
+                    - App\Shared\Infrastructure\Messenger\DomainEventPublisherMiddleware
 
             query.bus: ~
 

@@ -3,16 +3,16 @@
 | Field | Value |
 |---|---|
 | ID | WS-003 |
-| Version | 2.5 |
+| Version | 2.7 |
 | Status | **Discovery Blueprint — Corpus Partial** |
-| Lifecycle | ☑ Discovery · ☑ Blueprint · ☐ Prototype · ☐ User Test · ☐ Production |
+| Lifecycle | ☑ Discovery · ☑ Blueprint · ☑ Prototype · ☐ User Test · ☐ Production |
 | Workspace Lifecycle Chain | Discovery Blueprint → Corpus Consolidated → Candidate for Prototype → Validated Prototype — WS-003 est à l'étape 1 (voir §7 Definition of Done) |
 | Date | 2026-08-04 |
 | Sprint | Sprint 2 |
 | Depends on | PP-009 → PP-015 (identifiants gelés — voir §4) |
 | Display Rules | DR-006 (voir aussi UX Constraints, §5) |
 | Sources | Corpus CWRM (F001–F009, partiel — voir Corpus Gaps §3) · [Model C](../../research/challenge-consultation-workspace.md), décisions confirmées le 2026-08-04, hors corpus |
-| Prototype | — |
+| Prototype | [WS-003-prototype-v0.1.html](WS-003-prototype-v0.1.html) |
 
 > **Note de méthode — v2.0.** Cette version corrige une confusion épistémique introduite en v1.1 :
 > OBS-W-001 et OBS-W-002 y étaient présentées comme des observations de la consultation elle-même,
@@ -642,7 +642,7 @@ fermeture triviale une fois le patient parti.
 | OQ-W-009 | La note de consultation en texte libre (PP-012) nécessite-t-elle un format minimal pour conformité légale ? | Mode Clôture — contrainte réglementaire | Open — Model C |
 | OQ-W-010 | Comment WS-003 gère-t-il une consultation qui s'étend sur plusieurs sessions (le patient revient en cours) ? | Scope limitation — hors périmètre actuel | Open — Model C |
 | OQ-W-011 | Le rappel de fin de journée (§11, Practitioner Workspace) doit-il déclencher une notification push, ou la présence au tableau de bord suffit-elle ? | Cross-Workspace — hors périmètre WS-003 direct | Open — Model C |
-| OQ-W-012 | L'ouverture d'une consultation est-elle toujours explicite (PP-014), ou peut-elle être déduite de l'ouverture du dossier pendant un créneau planifié ? | PP-014 — déclenchement | Open — Model C |
+| OQ-W-012 | ~~L'ouverture d'une consultation est-elle toujours explicite (PP-014), ou peut-elle être déduite de l'ouverture du dossier pendant un créneau planifié ?~~ **Résolue (ADR-0023, 2026-08-06)** — toujours explicite, jamais déduite. Ouvrir un patient ≠ démarrer une consultation. | PP-014 — déclenchement | Resolved |
 
 > OQ-W-001 à 008 définissent le programme d'extraction corpus pour le volet "pendant" (Sprint 2, voir
 > §7 Definition of Done). OQ-W-009 à 012 reprennent le Challenge Request de Model C pour le volet
@@ -709,4 +709,6 @@ doivent jamais être fusionnés dans la communication produit : "décidé" ne ve
 | 2.2 | 2026-08-04 | PP-013 et PP-014 passent de `evidence: ?` à `evidence: ≈`, suite à l'extraction [WE-004](WE-004-documentation.md) (PAT-D-002, PAT-D-005 — 7/9 profils chacun) et sa formalisation dans [PDR-004](PDR-004-documentation.md) DD-402. PP-012 et PP-015 restent `evidence: ?` — non confirmés par WE-004. Premier cas concret de la boucle de Validation GOV-000 (Niveau 5) : la preuve circule d'un Workspace à l'autre. |
 | 2.3 | 2026-08-04 | Correction suite à l'audit critique de PDR-004 : l'evidence `≈` de PP-014 était sur-étendue. PAT-D-002 confirme le principe d'état ouvert/fermé, pas le mécanisme des deux rappels (§11) — resté sans ancrage, pur héritage Model C. Evidence de PP-014 scindée en conséquence (`≈` état / `?` rappels). PP-013 inchangée (pleinement supportée). Aucun autre contenu modifié. |
 | 2.4 | 2026-08-04 | Pointeur ajouté (§14) : OQ-W-002 (saisie vocale) reversée vers IH-001 (circuit Innovation, GOV-000 v1.3 §1bis). Aucun Product Principle modifié — WS-003 reste Gold Standard, la stabilisation n'est pas rouverte. |
+| 2.7 | 2026-08-06 | OQ-W-012 résolue par [ADR-0023](../../adr/ADR-0023-patient-context-consultation-care-record.md) — l'ouverture d'une consultation est toujours explicite, jamais déduite. Structure Dashboard/WS-002/WS-003/Care Record figée. |
+| 2.6 | 2026-08-06 | Prototype v0.1 ajouté (six modes, fidèle à l'architecture par états — pas de blocs/widgets, conformément à la décision du 2026-08-06, voir WS-003-M2-synthese.md). Aucun Product Principle modifié. |
 | 2.5 | 2026-08-04 | Renommage suite à GOV-000 v1.4 : IH-001 → [PDX-001](../discovery/PDX-001-capture-clinique-assistee.md) (Product Discovery remplace "circuit Innovation"). Indicateur d'**Origine** (Evidence-Driven / Discovery-Driven / Constraint-Driven / Founder-Driven) ajouté à chaque Product Principle (§4) — tous PP-009 à PP-015 sont **Founder-Driven** dans leur origine (Model C ou raisonnement Mission), y compris PP-013/014 dont l'evidence a depuis été renforcée : Origine et niveau de preuve sont deux axes distincts, l'un ne réécrit pas l'autre. |

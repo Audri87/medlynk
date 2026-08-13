@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Platforms\Clinical\Domain\ClinicalContribution\Event;
 
+use App\Shared\Domain\Event\DomainEventInterface;
 use App\Platforms\Clinical\Domain\ClinicalContribution\ValueObject\CareRecordId;
 use App\Platforms\Clinical\Domain\ClinicalContribution\ValueObject\ClinicalContributionId;
 use App\Platforms\Clinical\Domain\ClinicalContribution\ValueObject\ContributionTimestamp;
@@ -13,7 +14,7 @@ use App\Platforms\Clinical\Domain\ClinicalContribution\ValueObject\PractitionerI
  * Recorded when an authorized Practitioner approves a Validated contribution.
  * The contribution is immutable from this point. Immutable fact.
  */
-final readonly class ClinicalContributionApproved
+final readonly class ClinicalContributionApproved implements DomainEventInterface
 {
     public function __construct(
         public readonly ClinicalContributionId $clinicalContributionId,

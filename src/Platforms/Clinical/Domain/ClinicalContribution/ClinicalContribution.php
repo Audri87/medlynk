@@ -7,6 +7,7 @@ namespace App\Platforms\Clinical\Domain\ClinicalContribution;
 use App\Platforms\Clinical\Domain\ClinicalContribution\Event\ClinicalContributionApproved;
 use App\Platforms\Clinical\Domain\ClinicalContribution\Event\ClinicalContributionCreated;
 use App\Platforms\Clinical\Domain\ClinicalContribution\Event\ClinicalContributionValidated;
+use App\Shared\Domain\AggregateRoot;
 use App\Platforms\Clinical\Domain\ClinicalContribution\Exception\ContributionNotInDraftException;
 use App\Platforms\Clinical\Domain\ClinicalContribution\Exception\ContributionNotValidatedException;
 use App\Platforms\Clinical\Domain\ClinicalContribution\Exception\SelfApprovalAttemptedException;
@@ -31,7 +32,7 @@ use App\Platforms\Clinical\Domain\ClinicalContribution\ValueObject\PractitionerI
  * ─── What this class does ────────────────────────────────────────────────────────
  *  — Guards all business invariants (BI-001 through BI-007).
  *  — Records Domain Events for every state transition.
- *  — Exposes pullPendingEvents() for the Application Runtime to collect after commit.
+ *  — Releases Domain Events via releaseDomainEvents() for the Repository to collect after persist.
  *
  * ─── What this class does NOT do ─────────────────────────────────────────────────
  *  — Does not persist itself. Persistence is delegated to ClinicalContributionRepository.
@@ -53,10 +54,8 @@ use App\Platforms\Clinical\Domain\ClinicalContribution\ValueObject\PractitionerI
  * violated at the Aggregate level because invalid values can never reach this class.
  * BI-004 through BI-007 are state-machine invariants enforced by this class directly.
  */
-final class ClinicalContribution
+final class ClinicalContribution extends AggregateRoot
 {
-    /** @var object[] */
-    private array $pendingEvents = [];
 
     private ClinicalContributionId $id;
     private CareRecordId $careRecordId;
@@ -209,26 +208,6 @@ final class ClinicalContribution
         ));
     }
 
-    /**
-     * Returns and clears all pending Domain Events.
-     *
-     * Called exclusively by the Application Runtime after the transaction commits.
-     * The Runtime publishes the returned events to the Internal Event Bus.
-     *
-     * Pending events are discarded (not queued or deferred) if the transaction rolls
-     * back. This is a structural guarantee: events are only observable after commit.
-     * An event pending in this array before commit does not exist in the system.
-     *
-     * @return object[]
-     */
-    public function pullPendingEvents(): array
-    {
-        $events = $this->pendingEvents;
-        $this->pendingEvents = [];
-
-        return $events;
-    }
-
     public function getId(): ClinicalContributionId
     {
         return $this->id;
@@ -239,8 +218,4 @@ final class ClinicalContribution
         return $this->status;
     }
 
-    private function record(object $event): void
-    {
-        $this->pendingEvents[] = $event;
-    }
 }

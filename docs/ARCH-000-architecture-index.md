@@ -61,4 +61,6 @@ non rédigé ; Findings 001-003 identifiés mais non encore formalisés).
 | 2026-08-06 | 1.3 | [AR-001](AR-001-architecture-review.md) rédigé — Finding-004 résolu (frontière WS-004/WS-005 corrigée dans WBD-004 v2.1) |
 | 2026-08-06 | 1.4 | [AR-001B](AR-001B-empirical-audit-ws005.md) figé — audit aveugle par transformations d'état, corrobore Finding-004. Protocole général [CWRM-EXP-001](research/specifications/CWRM-EXP-001-state-transition-analysis.md) référencé (hors core CWRM, ne remplace pas le slot réservé CWRM-040) |
 | 2026-08-06 | 1.5 | [CWRM-EXP-001](research/specifications/CWRM-EXP-001-state-transition-analysis.md) passe **Accepted (Experimental)** v1.0 — le protocole est accepté comme méthode, l'hypothèse qu'il teste reste Experimental |
+| 2026-08-06 | 1.7 | [ADR-0022](adr/ADR-0022-m2-freeze-protocol.md) — gel de M2 pendant WS-002/004/005 ; [M2-JOURNAL-observations](../product/M2-JOURNAL-observations.md) ouvert |
+| 2026-08-06 | 1.8 | [ADR-0023](adr/ADR-0023-patient-context-consultation-care-record.md) — structure Dashboard/WS-002/WS-003/Care Record figée ; OQ-W-012 (WS-003) résolue |
 | 2026-08-06 | 1.6 | [AR-001](AR-001-architecture-review.md) Finding-005 ajouté — constat pur d'écart de corroboration sur le mandat WS-005, aucune décision. `ADR-0020` réservé, non rédigé |

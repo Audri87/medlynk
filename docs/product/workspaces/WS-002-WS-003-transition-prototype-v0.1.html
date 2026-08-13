@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MedLink — Transition WS-002 → WS-003 · Prototype v0.1</title>
+<!--
+    Statut interne (non affiché au praticien) :
+    Réutilise le langage visuel de probe-dossier-v1.html (tokens, topbar, bandeau patient).
+    Corrige : onglets dossier retirés de l'écran WS-002 (Non-Goals WS-002) ;
+              actions Mode Clôture (ordonnance/bilan/adressage) retirées de WS-002 ;
+              "Démarrer la consultation" isolé comme action unique dominante ;
+              transition WS-002 → WS-003 = coupure nette, pas de superposition (Cognitive Contract WS-003).
+    Voir la revue architecturale de session avant tout test praticien.
+-->
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f4f5f7;
+    --surface: #ffffff;
+    --sidebar-bg: #1a2233;
+    --sidebar-text: #8fa3bf;
+    --sidebar-active-bg: #2d3f5c;
+    --accent: #2563eb;
+    --alert: #dc2626;
+    --alert-bg: #fef2f2;
+    --alert-border: #fecaca;
+    --warn: #d97706;
+    --warn-bg: #fffbeb;
+    --ok: #16a34a;
+    --ok-bg: #f0fdf4;
+    --purple: #7c3aed;
+    --purple-bg: #ede9fe;
+    --text: #111827;
+    --text-muted: #6b7280;
+    --text-subtle: #9ca3af;
+    --border: #e5e7eb;
+    --radius: 8px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.5;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ── Proto controls ── */
+  .proto-bar {
+    background: #0f1420; color: #8fa3bf;
+    padding: 6px 20px; font-size: 11px;
+    display: flex; align-items: center; gap: 8px;
+    flex-shrink: 0;
+  }
+  .proto-tag { margin-left: auto; background: rgba(246,173,85,0.15); color: #f6ad55; padding: 3px 8px; border-radius: 4px; }
+
+  /* ── Top bar ── */
+  .topbar {
+    background: var(--sidebar-bg);
+    padding: 0 20px; height: 52px;
+    display: flex; align-items: center; gap: 16px;
+    flex-shrink: 0;
+  }
+  .topbar-logo { font-weight: 700; font-size: 16px; color: #fff; letter-spacing: -0.3px; }
+  .topbar-logo span { color: #60a5fa; }
+  .topbar-sep { width: 1px; height: 20px; background: #2d3f5c; }
+  .topbar-back { color: #8fa3bf; font-size: 13px; cursor: pointer; }
+  .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 16px; }
+  .topbar-practitioner { font-size: 13px; color: #8fa3bf; }
+  .topbar-avatar {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: #2d3f5c; color: #60a5fa; font-weight: 700; font-size: 12px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .topbar-timer {
+    font-size: 13px; color: #60a5fa; font-variant-numeric: tabular-nums;
+    display: none; align-items: center; gap: 6px;
+  }
+  .topbar-timer.visible { display: flex; }
+  .topbar-timer::before { content: '●'; font-size: 8px; color: #ef4444; }
+
+  /* ── Patient banner (WS-002, Bloc 1 — Présence) ── */
+  .patient-banner {
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 16px 20px; display: flex; align-items: center; gap: 16px; flex-shrink: 0;
+  }
+  .patient-avatar {
+    width: 52px; height: 52px; border-radius: 50%; background: #dbeafe; color: var(--accent);
+    font-weight: 700; font-size: 18px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .patient-info { flex: 1; }
+  .patient-name { font-size: 18px; font-weight: 700; }
+  .patient-meta { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+  .patient-tags { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+  .patient-tag { font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 12px; border: 1px solid; }
+  .tag-condition { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
+  .tag-alert { background: var(--alert-bg); color: var(--alert); border-color: var(--alert-border); }
+  .tag-allergy { background: #fff7ed; color: #c2410c; border-color: #fed7aa; }
+
+  /* ── Main WS-002 ── */
+  .main { flex: 1; overflow-y: auto; padding: 20px; max-width: 640px; margin: 0 auto; width: 100%; }
+  .ws-eyebrow { font-size: 9.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-subtle); margin-bottom: 8px; }
+  .ws-question { font-size: 21px; font-weight: 700; color: var(--text); line-height: 1.3; letter-spacing: -0.3px; margin-bottom: 22px; }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; margin-bottom: 14px; }
+  .card-header { padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
+  .card-header-title { font-weight: 600; font-size: 13px; }
+  .card-body { padding: 16px; font-size: 13.5px; color: var(--text); line-height: 1.6; }
+
+  .card.intention { border-left: 3px solid var(--purple); }
+  .card.intention .card-header-title { color: var(--purple); }
+
+  /* Historique — collapsed by default (PP-008) */
+  .historique-trigger {
+    width: 100%; text-align: left; background: none; border: none; padding: 13px 16px;
+    cursor: pointer; display: flex; align-items: center; justify-content: space-between; font-family: inherit;
+  }
+  .historique-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-subtle); }
+  .historique-chevron { color: var(--text-subtle); transition: transform 0.2s; }
+  .historique-chevron.open { transform: rotate(90deg); color: var(--accent); }
+  .historique-body { display: none; padding: 0 16px 14px; font-size: 13px; color: var(--text-muted); }
+  .historique-body.visible { display: block; }
+
+  .care-record-link {
+    text-align: center; font-size: 12px; color: var(--text-subtle); margin: 4px 0 26px; padding-top: 10px;
+    border-top: 1px solid var(--border);
+  }
+  .care-record-link a { color: var(--text-subtle); text-decoration: none; }
+  .care-record-link a:hover { color: var(--accent); }
+
+  /* ── Bouton dominant — conclusion naturelle du flux, pas une action flottante ── */
+  .cta-consultation { padding: 4px 0 24px; }
+  .btn-start {
+    width: 100%; background: var(--accent); color: white; border: none;
+    border-radius: 12px; padding: 16px; font-size: 15px; font-weight: 700;
+    cursor: pointer; font-family: inherit; box-shadow: 0 4px 14px rgba(37,99,235,0.3);
+  }
+  .btn-start:hover { background: #1d4ed8; }
+
+  /* ══════════ WS-003 · Mode Présence — délibérément vide ══════════ */
+  #screen-ws003 { display: none; flex: 1; flex-direction: column; justify-content: space-between; }
+  #screen-ws003.active { display: flex; }
+  .presence-center { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+  .presence-name { font-size: 26px; font-weight: 700; color: white; }
+  .presence-sub { font-size: 13px; color: #8fa3bf; margin-top: 6px; }
+  .presence-actions { display: flex; justify-content: center; gap: 22px; padding: 0 24px 56px; }
+  .presence-action { display: flex; flex-direction: column; align-items: center; gap: 8px; background: none; border: none; cursor: pointer; font-family: inherit; }
+  .presence-action-icon {
+    width: 56px; height: 56px; border-radius: 50%; background: var(--sidebar-active-bg);
+    display: flex; align-items: center; justify-content: center; font-size: 22px; color: #c9d8ed;
+  }
+  .presence-action-label { font-size: 10px; color: #8fa3bf; }
+  .presence-close {
+    text-align: center; padding-bottom: 20px; font-size: 12px;
+  }
+  .presence-close a { color: #60a5fa; text-decoration: none; }
+
+  #screen-ws003-body { background: var(--sidebar-bg); flex: 1; display: none; flex-direction: column; }
+  #screen-ws003-body.active { display: flex; }
+</style>
+</head>
+<body>
+
+<div class="proto-bar">
+  Transition WS-002 → WS-003 — même langage visuel que probe-dossier-v1
+  <span class="proto-tag">Démo interactive</span>
+</div>
+
+<!-- Top bar (persiste, mais son contenu change) -->
+<div class="topbar">
+  <div class="topbar-logo">Med<span>Link</span></div>
+  <div class="topbar-sep"></div>
+  <div class="topbar-back" onclick="location.reload()">← Mon espace</div>
+  <div class="topbar-right">
+    <div class="topbar-timer" id="topbar-timer">00:00</div>
+    <div class="topbar-practitioner">Dr. A. Durand</div>
+    <div class="topbar-avatar">AD</div>
+  </div>
+</div>
+
+<!-- ═══════════════ WS-002 ═══════════════ -->
+<div id="screen-ws002">
+
+  <div class="patient-banner">
+    <div class="patient-avatar">MR</div>
+    <div class="patient-info">
+      <div class="patient-name">Michel Rousseau</div>
+      <div class="patient-meta">58 ans · suivi depuis 2014 · consultation prévue 10h30</div>
+      <div class="patient-tags">
+        <span class="patient-tag tag-allergy">Allergie pénicilline</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="ws-eyebrow">WS-002 — Patient Context</div>
+    <div class="ws-question">Pourquoi ce patient est-il devant moi aujourd'hui ?</div>
+
+    <!-- Bloc 1 — Présence : la première réponse à la question ci-dessus -->
+    <!-- Le bandeau (identité, allergie) répond déjà à "qui est ce patient" — pas de bloc dupliqué ici -->
+
+
+    <!-- Bloc 2 — Continuité -->
+    <div class="card">
+      <div class="card-header"><span class="card-header-title">◎ Continuité — Où en étions-nous</span></div>
+      <div class="card-body">
+        Consultation du 18 juin — HbA1c 8,1 %, augmentation. Discussion observance : patient reconnaît
+        des irrégularités alimentaires. Bilan redemandé à 2 semaines.
+      </div>
+    </div>
+
+    <!-- Bloc 3 — Intention -->
+    <div class="card intention">
+      <div class="card-header"><span class="card-header-title">◈ Intention — Ce qui était prévu</span></div>
+      <div class="card-body">
+        Revoir si HbA1c &gt; 9 % → discuter insuline. Patient réticent (peur des injections, contrainte
+        professionnelle) — privilégier voie orale si possible.
+      </div>
+    </div>
+
+    <!-- Bloc 4 — Historique, collapsed -->
+    <div class="card">
+      <button class="historique-trigger" onclick="toggleHistorique()">
+        <span class="historique-label">◫ Historique</span>
+        <span class="historique-chevron" id="hist-chevron">›</span>
+      </button>
+      <div class="historique-body" id="hist-body">
+        Suivi depuis 2014 — 12 ans, diabète type 2 (dep. 2016), HTA (dep. 2014), dyslipidémie (dep. 2017).
+      </div>
+    </div>
+
+    <div class="cta-consultation">
+      <button class="btn-start" onclick="startConsultation()">Démarrer la consultation →</button>
+    </div>
+
+    <div class="care-record-link"><a href="#">Consulter le dossier complet →</a></div>
+  </div>
+
+</div>
+
+<!-- ═══════════════ WS-003 · Mode Présence ═══════════════ -->
+<div id="screen-ws003-body">
+  <div id="screen-ws003" class="active">
+    <div class="presence-center">
+      <div class="presence-name">Michel Rousseau</div>
+      <div class="presence-sub">Consultation en cours</div>
+    </div>
+    <div class="presence-actions">
+      <button class="presence-action"><span class="presence-action-icon">⊞</span><span class="presence-action-label">Capturer</span></button>
+      <button class="presence-action"><span class="presence-action-icon">◎</span><span class="presence-action-label">Dossier</span></button>
+      <button class="presence-action"><span class="presence-action-icon">→</span><span class="presence-action-label">Suivi</span></button>
+    </div>
+    <div class="presence-close"><a href="#" onclick="endConsultation();return false;">Clôturer la consultation</a></div>
+  </div>
+</div>
+
+<script>
+let seconds = 0, timerInt = null;
+
+function startConsultation() {
+  document.getElementById('screen-ws002').style.display = 'none';
+  document.getElementById('screen-ws003-body').classList.add('active');
+  document.getElementById('topbar-timer').classList.add('visible');
+  document.querySelector('.topbar-back').textContent = '← Mon espace';
+  timerInt = setInterval(() => {
+    seconds++;
+    const m = String(Math.floor(seconds/60)).padStart(2,'0');
+    const s = String(seconds%60).padStart(2,'0');
+    document.getElementById('topbar-timer').textContent = `${m}:${s}`;
+  }, 1000);
+}
+
+function endConsultation() {
+  clearInterval(timerInt);
+  location.reload();
+}
+
+function toggleHistorique() {
+  document.getElementById('hist-body').classList.toggle('visible');
+  document.getElementById('hist-chevron').classList.toggle('open');
+}
+</script>
+
+</body>
+</html>

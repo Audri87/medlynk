@@ -6,7 +6,10 @@ namespace App\Platforms\Clinical\Infrastructure\Persistence\Repository;
 
 use App\Platforms\Clinical\Application\Port\ClinicalContributionRepositoryPort;
 use App\Platforms\Clinical\Domain\ClinicalContribution\ClinicalContribution;
+use App\Platforms\Clinical\Domain\ClinicalContribution\Exception\ClinicalContributionNotFoundException;
 use App\Platforms\Clinical\Domain\ClinicalContribution\ValueObject\ClinicalContributionId;
+use App\Shared\Application\Port\DomainEventCollectorPort;
+use Doctrine\DBAL\Connection;
 
 /**
  * Repository implementation — Infrastructure layer.
@@ -16,24 +19,62 @@ use App\Platforms\Clinical\Domain\ClinicalContribution\ValueObject\ClinicalContr
  * to and from its persistence representation, within the active Application transaction.
  *
  * Architectural guarantees (SA-007):
- *   — Persists exactly one Aggregate Root: ClinicalContribution (I-001, I-002).
- *   — Participates in the active transaction — does not own it (I-007).
- *   — Does not publish Domain Events (I-003).
- *   — Does not publish Integration Events (I-004).
- *   — Mapping logic confined to this Infrastructure class (I-010).
- *   — Concurrency control coordinated within Infrastructure layer (I-009).
+ *   — Persists exactly one Aggregate Root: ClinicalContribution (D-001).
+ *   — Participates in the active transaction — does not own it (D-003).
+ *   — Does not publish Domain Events (D-002).
+ *   — Does not publish Integration Events (D-002).
+ *   — Mapping delegated to ClinicalContributionMapper (D-006, ADR-SA-008 D-006).
  *
  * Invisible to Command Handlers — they depend on the Port, not this class.
  */
 final class ClinicalContributionRepository implements ClinicalContributionRepositoryPort
 {
-    public function retrieve(ClinicalContributionId $id): ClinicalContribution
-    {
-        throw new \LogicException('Not yet implemented.');
-    }
+    public function __construct(
+        private readonly Connection $connection,
+        private readonly ClinicalContributionMapper $mapper,
+        private readonly DomainEventCollectorPort $collector,
+    ) {}
 
     public function persist(ClinicalContribution $contribution): void
     {
-        throw new \LogicException('Not yet implemented.');
+        $p = $this->mapper->toPersistence($contribution);
+
+        $this->connection->executeStatement(
+            'INSERT INTO clinical_contributions (
+                id, care_record_id, status, clinical_text, recorded_at,
+                contributing_practitioner_id, contributor_role,
+                approving_practitioner_id, approved_at
+            ) VALUES (
+                :id, :care_record_id, :status, :clinical_text, :recorded_at,
+                :contributing_practitioner_id, :contributor_role,
+                :approving_practitioner_id, :approved_at
+            )
+            ON CONFLICT (id) DO UPDATE SET
+                status                    = EXCLUDED.status,
+                approving_practitioner_id = EXCLUDED.approving_practitioner_id,
+                approved_at               = EXCLUDED.approved_at,
+                updated_at                = NOW()',
+            $p,
+        );
+
+        $this->collector->collect(...$contribution->releaseDomainEvents());
+    }
+
+    public function retrieve(ClinicalContributionId $id): ClinicalContribution
+    {
+        $row = $this->connection->fetchAssociative(
+            'SELECT id, care_record_id, status, clinical_text, recorded_at,
+                    contributing_practitioner_id, contributor_role,
+                    approving_practitioner_id, approved_at
+             FROM clinical_contributions
+             WHERE id = :id',
+            ['id' => $id->value],
+        );
+
+        if ($row === false) {
+            throw new ClinicalContributionNotFoundException($id);
+        }
+
+        return $this->mapper->toDomain($row);
     }
 }

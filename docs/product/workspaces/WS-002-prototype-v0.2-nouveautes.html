@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WS-002 — Patient Context · Prototype v0.2 (hypothèse Nouveautés)</title>
+    <!--
+        Statut interne (non affiché au praticien) :
+        Bloc "Nouveautés" = HYPOTHÈSE, non ancrée corpus, non validée.
+        Origine (GOV-000 §1bis) : Founder-Driven / Discovery-Driven à confirmer.
+        Ne pas afficher ce statut à l'écran pendant un test praticien — biaiserait la réaction.
+        Voir CWRM-020-APX-M2 pour les questions ciblées à poser en entretien.
+    -->
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: #F7F8FC;
+            color: #1A202C;
+            min-height: 100vh;
+        }
+
+        /* ── Prototype controls ── */
+        .proto-bar {
+            background: #1A202C;
+            color: #E2E8F0;
+            padding: 8px 16px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            flex-wrap: wrap;
+        }
+        .proto-label { opacity: 0.5; margin-right: 4px; }
+        .proto-btn {
+            background: transparent;
+            border: 1px solid rgba(255,255,255,0.25);
+            color: #CBD5E0;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 11px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.12s ease;
+        }
+        .proto-btn.active { background: white; color: #1A202C; border-color: white; font-weight: 600; }
+        .proto-tag {
+            margin-left: auto;
+            opacity: 0.55;
+            font-size: 10px;
+            letter-spacing: 0.04em;
+            background: rgba(246,173,85,0.18);
+            color: #F6AD55;
+            padding: 3px 8px;
+            border-radius: 4px;
+        }
+
+        /* ── Layout ── */
+        .app {
+            max-width: 430px;
+            margin: 0 auto;
+            padding-bottom: 48px;
+        }
+
+        /* ── Patient header (Présence) ── */
+        .patient-header {
+            background: white;
+            padding: 24px 20px 18px;
+            border-bottom: 1px solid #EDF2F7;
+        }
+        .workspace-label {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #A0AEC0;
+            margin-bottom: 10px;
+        }
+        .patient-name {
+            font-size: 26px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            color: #1A202C;
+        }
+        .patient-meta {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 5px;
+            flex-wrap: wrap;
+        }
+        .patient-age { font-size: 14px; color: #718096; }
+        .visit-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            background: #EBF4FF;
+            color: #2B6CB0;
+        }
+        .visit-time { font-size: 13px; color: #A0AEC0; margin-top: 8px; }
+
+        /* ── Section wrapper ── */
+        .section { margin: 14px 16px 0; }
+        .section-label {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #A0AEC0;
+            margin-bottom: 8px;
+            padding-left: 2px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .section-question {
+            font-size: 11px;
+            color: #CBD5E0;
+            font-weight: 400;
+            text-transform: none;
+            letter-spacing: 0;
+            font-style: italic;
+        }
+
+        /* ── Cards ── */
+        .card {
+            background: white;
+            border-radius: 14px;
+            overflow: hidden;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+        }
+
+        /* ── Nouveautés bloc (hypothèse) ── */
+        .nouveautes-card { border-left: 3px solid #FC8181; border-radius: 0 14px 14px 0; }
+        .nouveautes-card .section-label { color: #E53E3E; }
+        .nouveaute-row {
+            padding: 12px 16px;
+            border-bottom: 1px solid #FFF5F5;
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+        }
+        .nouveaute-row:last-child { border-bottom: none; }
+        .nouveaute-dot {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            margin-top: 5px;
+            flex-shrink: 0;
+        }
+        .nouveaute-dot.high { background: #F56565; }
+        .nouveaute-dot.medium { background: #F6AD55; }
+        .nouveaute-body { flex: 1; }
+        .nouveaute-title { font-size: 14px; font-weight: 600; color: #2D3748; }
+        .nouveaute-sub { font-size: 12px; color: #718096; margin-top: 2px; line-height: 1.4; }
+        .nouveaute-time { font-size: 11px; color: #CBD5E0; white-space: nowrap; margin-top: 2px; }
+        .nouveaute-more {
+            width: 100%;
+            text-align: left;
+            background: #FFF5F5;
+            border: none;
+            padding: 10px 16px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #E53E3E;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        .nouveaute-extra { display: none; }
+        .nouveaute-extra.visible { display: block; }
+
+        /* ── Continuité bloc ── */
+        .session-date { font-size: 11px; color: #A0AEC0; padding: 14px 16px 0; }
+        .session-summary { font-size: 14px; line-height: 1.55; color: #2D3748; padding: 8px 16px 14px; }
+        .session-tags { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 16px 14px; }
+        .session-tag { background: #EDF2F7; color: #4A5568; border-radius: 4px; padding: 3px 8px; font-size: 12px; }
+
+        /* ── Intention bloc ── */
+        .intent-card { border-left: 3px solid #805AD5; border-radius: 0 14px 14px 0; }
+        .intent-card .section-label { color: #805AD5; }
+        .intention-row {
+            padding: 10px 16px;
+            border-bottom: 1px solid #F7F0FF;
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+        }
+        .intention-row:last-child { border-bottom: none; }
+        .intention-arrow { color: #805AD5; font-size: 14px; margin-top: 1px; }
+        .intention-text { font-size: 14px; color: #2D3748; line-height: 1.4; }
+
+        /* ── Historique bloc ── */
+        .historique-card { border-left: 3px solid #EDF2F7; border-radius: 0 14px 14px 0; }
+        .historique-trigger {
+            width: 100%;
+            text-align: left;
+            background: none;
+            border: none;
+            padding: 13px 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-family: inherit;
+        }
+        .historique-trigger-label {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #A0AEC0;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .historique-count { font-size: 11px; color: #CBD5E0; font-weight: 400; text-transform: none; letter-spacing: 0; }
+        .historique-chevron { font-size: 14px; color: #CBD5E0; transition: transform 0.2s ease; }
+        .historique-chevron.open { transform: rotate(90deg); color: #4299E1; }
+        .historique-body { display: none; }
+        .historique-body.visible { display: block; }
+        .historique-row { padding: 10px 16px; border-top: 1px solid #EDF2F7; }
+        .historique-date { font-size: 11px; color: #A0AEC0; margin-bottom: 3px; }
+        .historique-text { font-size: 13px; color: #4A5568; line-height: 1.45; }
+
+        .footer-note {
+            text-align: center;
+            padding: 24px 16px 0;
+            font-size: 11px;
+            color: #CBD5E0;
+            line-height: 1.6;
+        }
+
+        @media (min-width: 480px) {
+            .app { padding: 0 0 64px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="proto-bar">
+    <span class="proto-label">WS-002 · v0.2</span>
+    <span class="proto-tag">Bloc Nouveautés — non validé</span>
+</div>
+
+<div class="app">
+
+    <!-- Bloc 1 — Présence -->
+    <div class="patient-header">
+        <div class="workspace-label">Contexte patient</div>
+        <div class="patient-name">Marie Dubois</div>
+        <div class="patient-meta">
+            <span class="patient-age">34 ans</span>
+            <span class="visit-badge">Suivi</span>
+        </div>
+        <div class="visit-time">Consultation · 10h00</div>
+    </div>
+
+    <!-- Bloc Nouveautés (hypothèse) -->
+    <div class="section">
+        <div class="section-label">
+            ● Nouveautés
+            <span class="section-question">Qu'est-ce qui a changé depuis la dernière fois ?</span>
+        </div>
+        <div class="card nouveautes-card">
+            <div class="nouveaute-row">
+                <span class="nouveaute-dot high"></span>
+                <div class="nouveaute-body">
+                    <div class="nouveaute-title">Rapport reçu hier</div>
+                    <div class="nouveaute-sub">Peut modifier l'évaluation actuelle</div>
+                </div>
+                <span class="nouveaute-time">Hier</span>
+            </div>
+            <div class="nouveaute-row">
+                <span class="nouveaute-dot medium"></span>
+                <div class="nouveaute-body">
+                    <div class="nouveaute-title">Résultat biologique</div>
+                </div>
+                <span class="nouveaute-time">Il y a 2 j</span>
+            </div>
+            <div class="nouveaute-row">
+                <span class="nouveaute-dot medium"></span>
+                <div class="nouveaute-body">
+                    <div class="nouveaute-title">Courrier confrère</div>
+                </div>
+                <span class="nouveaute-time">Il y a 3 j</span>
+            </div>
+            <div class="nouveaute-extra" id="nouveaute-extra">
+                <div class="nouveaute-row">
+                    <span class="nouveaute-dot medium"></span>
+                    <div class="nouveaute-body">
+                        <div class="nouveaute-title">Renouvellement d'ordonnance signalé</div>
+                    </div>
+                    <span class="nouveaute-time">Il y a 4 j</span>
+                </div>
+                <div class="nouveaute-row">
+                    <span class="nouveaute-dot medium"></span>
+                    <div class="nouveaute-body">
+                        <div class="nouveaute-title">Message du secrétariat</div>
+                    </div>
+                    <span class="nouveaute-time">Il y a 5 j</span>
+                </div>
+            </div>
+            <button class="nouveaute-more" onclick="toggleNouveautes()" id="nouveaute-toggle">Voir toutes les nouveautés (5)</button>
+        </div>
+    </div>
+
+    <!-- Bloc 2 — Continuité -->
+    <div class="section">
+        <div class="section-label">
+            ◎ Continuité
+            <span class="section-question">Où en étions-nous ?</span>
+        </div>
+        <div class="card">
+            <div class="session-date">Dernière séance — 18 juillet 2026 · il y a 17 jours</div>
+            <div class="session-summary">
+                Séance centrée sur l'anxiété de performance au travail.
+                Marie a décrit un épisode difficile avec sa responsable.
+                Humeur globalement stable, légèrement préoccupée.
+                Bon ancrage dans les exercices de pleine conscience.
+            </div>
+            <div class="session-tags">
+                <span class="session-tag">Anxiété de performance</span>
+                <span class="session-tag">Relation maternelle</span>
+                <span class="session-tag">Stabilité ↗</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bloc 3 — Intention -->
+    <div class="section">
+        <div class="section-label" style="color: #805AD5;">
+            ◈ Intention
+            <span class="section-question" style="color: #D6BCFA;">Qu'avions-nous prévu ?</span>
+        </div>
+        <div class="card intent-card">
+            <div class="intention-row">
+                <span class="intention-arrow">→</span>
+                <span class="intention-text">Reprendre l'exercice de relaxation — résultats à évaluer</span>
+            </div>
+            <div class="intention-row">
+                <span class="intention-arrow">→</span>
+                <span class="intention-text">Explorer l'épisode avec la mère, évoqué en fin de séance</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bloc 4 — Historique -->
+    <div class="section">
+        <div class="card historique-card">
+            <button class="historique-trigger" onclick="toggleHistorique()">
+                <span class="historique-trigger-label">
+                    ◫ Historique
+                    <span class="historique-count">18 séances · depuis jan. 2025</span>
+                </span>
+                <span class="historique-chevron" id="historique-chevron">›</span>
+            </button>
+            <div class="historique-body" id="historique-body">
+                <div class="historique-row">
+                    <div class="historique-date">04 jul. 2026</div>
+                    <div class="historique-text">Travail sur les mécanismes d'évitement. Progrès dans la régulation émotionnelle.</div>
+                </div>
+                <div class="historique-row">
+                    <div class="historique-date">20 juin 2026</div>
+                    <div class="historique-text">Épisode d'angoisse au travail. Introduction de la technique de décentrement.</div>
+                </div>
+                <div class="historique-row">
+                    <div class="historique-date">06 juin 2026</div>
+                    <div class="historique-text">Identification du schéma perfectionniste. Début du travail sur la tolérance à l'incertitude.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer-note">
+        WS-002 · Patient Context · Prototype v0.2<br>
+        Q-002 — Pourquoi ce patient est-il devant moi aujourd'hui ?<br>
+        Bloc "Nouveautés" — hypothèse en test, non validée
+    </div>
+
+</div>
+
+<script>
+function toggleHistorique() {
+    const body = document.getElementById('historique-body');
+    const chevron = document.getElementById('historique-chevron');
+    body.classList.toggle('visible');
+    chevron.classList.toggle('open');
+}
+function toggleNouveautes() {
+    const extra = document.getElementById('nouveaute-extra');
+    const btn = document.getElementById('nouveaute-toggle');
+    extra.classList.toggle('visible');
+    btn.style.display = extra.classList.contains('visible') ? 'none' : 'block';
+}
+</script>
+
+</body>
+</html>

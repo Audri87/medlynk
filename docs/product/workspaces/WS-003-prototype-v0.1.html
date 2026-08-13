@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WS-003 — Consultation · Prototype v0.1</title>
+    <!--
+        Statut interne (non affiché au praticien) :
+        Mode Présence/Capture/Lookup/Interruption/Recovery = PP-009/010/011, evidence "?", Hypothèse.
+        Mode Clôture = décidé (Model C), evidence "≈" partielle (PP-013/014 état).
+        Architecture par modes, pas par blocs — ratifié le 2026-08-06, ne pas transposer WS-002.
+        Voir WS-003-M2-synthese.md avant tout test praticien.
+    -->
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: #F7F8FC;
+            color: #1A202C;
+            min-height: 100vh;
+        }
+
+        /* ── Prototype controls ── */
+        .proto-bar {
+            background: #1A202C;
+            color: #E2E8F0;
+            padding: 8px 16px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            position: sticky;
+            top: 0;
+            z-index: 200;
+            flex-wrap: wrap;
+        }
+        .proto-label { opacity: 0.5; margin-right: 2px; }
+        .proto-btn {
+            background: transparent;
+            border: 1px solid rgba(255,255,255,0.25);
+            color: #CBD5E0;
+            padding: 4px 9px;
+            border-radius: 4px;
+            font-size: 10.5px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.12s ease;
+        }
+        .proto-btn.active { background: white; color: #1A202C; border-color: white; font-weight: 600; }
+        .proto-tag {
+            margin-left: auto;
+            font-size: 10px;
+            opacity: 0.55;
+            background: rgba(246,173,85,0.18);
+            color: #F6AD55;
+            padding: 3px 8px;
+            border-radius: 4px;
+            white-space: nowrap;
+        }
+
+        .app {
+            max-width: 430px;
+            margin: 0 auto;
+            min-height: calc(100vh - 40px);
+            position: relative;
+        }
+
+        .screen { display: none; min-height: calc(100vh - 40px); }
+        .screen.active { display: flex; flex-direction: column; }
+
+        /* ══════════ MODE PRÉSENCE — délibérément vide ══════════ */
+        #screen-presence {
+            justify-content: space-between;
+            padding: 0;
+        }
+        .presence-top {
+            padding: 48px 24px 0;
+            text-align: center;
+        }
+        .presence-label {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: #CBD5E0;
+        }
+        .presence-name {
+            font-size: 24px;
+            font-weight: 700;
+            color: #1A202C;
+            margin-top: 14px;
+            letter-spacing: -0.4px;
+        }
+        .presence-timer {
+            font-size: 15px;
+            color: #A0AEC0;
+            margin-top: 6px;
+            font-variant-numeric: tabular-nums;
+        }
+        .presence-actions {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            padding: 0 24px 56px;
+        }
+        .presence-action {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        .presence-action-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: white;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            color: #4A5568;
+            transition: transform 0.12s ease;
+        }
+        .presence-action:active .presence-action-icon { transform: scale(0.94); }
+        .presence-action-label { font-size: 10px; color: #A0AEC0; }
+        .presence-hint {
+            text-align: center;
+            font-size: 11px;
+            color: #E2E8F0;
+            padding-bottom: 12px;
+        }
+
+        /* ══════════ MODE CAPTURE ══════════ */
+        #screen-capture { justify-content: flex-end; background: rgba(26,32,44,0.35); }
+        .capture-sheet {
+            background: white;
+            border-radius: 20px 20px 0 0;
+            padding: 20px 20px 28px;
+            box-shadow: 0 -4px 24px rgba(0,0,0,0.12);
+        }
+        .capture-label {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #A0AEC0;
+            margin-bottom: 10px;
+        }
+        .capture-input {
+            width: 100%;
+            border: none;
+            font-family: inherit;
+            font-size: 16px;
+            line-height: 1.5;
+            color: #1A202C;
+            resize: none;
+            min-height: 90px;
+            outline: none;
+        }
+        .capture-input::placeholder { color: #CBD5E0; }
+        .capture-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 12px;
+        }
+        .btn-ghost, .btn-primary {
+            border: none;
+            border-radius: 20px;
+            padding: 9px 18px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        .btn-ghost { background: #EDF2F7; color: #4A5568; }
+        .btn-primary { background: #1A202C; color: white; }
+
+        /* ══════════ MODE LOOKUP ══════════ */
+        #screen-lookup { background: white; }
+        .lookup-header {
+            padding: 16px 16px 14px;
+            border-bottom: 1px solid #EDF2F7;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .lookup-back {
+            background: #EDF2F7;
+            border: none;
+            border-radius: 8px;
+            width: 32px;
+            height: 32px;
+            font-size: 16px;
+            color: #4A5568;
+            cursor: pointer;
+        }
+        .lookup-context { font-size: 12px; color: #A0AEC0; }
+        .lookup-context strong { color: #2D3748; font-weight: 600; }
+        .lookup-body { padding: 20px 16px; flex: 1; }
+        .lookup-body h3 { font-size: 15px; color: #2D3748; margin-bottom: 10px; }
+        .lookup-body p { font-size: 13px; color: #718096; line-height: 1.6; }
+
+        /* ══════════ MODE INTERRUPTION ══════════ */
+        #screen-interruption {
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 24px;
+            gap: 18px;
+        }
+        .interrupt-icon { font-size: 40px; }
+        .interrupt-title { font-size: 17px; font-weight: 700; color: #2D3748; }
+        .interrupt-sub { font-size: 13px; color: #A0AEC0; }
+
+        /* ══════════ MODE RECOVERY ══════════ */
+        #screen-recovery { justify-content: center; padding: 24px; gap: 20px; }
+        .recovery-eyebrow { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #A0AEC0; text-align: center; }
+        .recovery-card { background: white; border-radius: 14px; padding: 18px; box-shadow: 0 1px 4px rgba(0,0,0,0.07); }
+        .recovery-subject { font-size: 16px; font-weight: 700; color: #1A202C; margin-bottom: 8px; }
+        .recovery-note { font-size: 14px; color: #4A5568; line-height: 1.5; }
+        .recovery-timer { text-align: center; font-size: 11px; color: #CBD5E0; }
+
+        /* ══════════ MODE CLÔTURE ══════════ */
+        #screen-cloture { background: #F7F8FC; }
+        .cloture-header {
+            padding: 20px 16px 14px;
+            background: white;
+            border-bottom: 1px solid #EDF2F7;
+        }
+        .cloture-eyebrow { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #A0AEC0; }
+        .cloture-title { font-size: 19px; font-weight: 700; color: #1A202C; margin-top: 4px; }
+        .cloture-body { padding: 16px; flex: 1; }
+        .cloture-note-card { background: white; border-radius: 14px; padding: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.07); margin-bottom: 12px; }
+        .cloture-note-card textarea {
+            width: 100%; border: none; font-family: inherit; font-size: 14px; color: #2D3748;
+            line-height: 1.5; min-height: 100px; resize: vertical; outline: none;
+        }
+        .cloture-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+        .cloture-chip {
+            background: white; border: 1px solid #E2E8F0; border-radius: 20px;
+            padding: 8px 14px; font-size: 12.5px; color: #4A5568; cursor: pointer; font-family: inherit;
+        }
+        .cloture-footer { padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+        .btn-close-full { background: #1A202C; color: white; border: none; border-radius: 12px; padding: 14px; font-size: 14.5px; font-weight: 600; cursor: pointer; font-family: inherit; }
+        .btn-close-quick { background: none; border: none; color: #A0AEC0; font-size: 13px; text-decoration: underline; cursor: pointer; font-family: inherit; padding: 4px; }
+
+        /* ══════════ CLOSED ══════════ */
+        #screen-closed { justify-content: center; align-items: center; text-align: center; gap: 10px; padding: 24px; }
+        .closed-icon { font-size: 34px; }
+        .closed-title { font-size: 16px; font-weight: 700; color: #2D3748; }
+        .closed-sub { font-size: 12.5px; color: #A0AEC0; }
+
+        .footer-note {
+            text-align: center;
+            padding: 14px 16px;
+            font-size: 10.5px;
+            color: #CBD5E0;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+
+<div class="proto-bar">
+    <span class="proto-label">WS-003 · Mode :</span>
+    <button class="proto-btn" data-mode="presence" onclick="goTo('presence')">Présence</button>
+    <button class="proto-btn" data-mode="capture" onclick="goTo('capture')">Capture</button>
+    <button class="proto-btn" data-mode="lookup" onclick="goTo('lookup')">Lookup</button>
+    <button class="proto-btn" data-mode="interruption" onclick="goTo('interruption')">Interruption</button>
+    <button class="proto-btn" data-mode="recovery" onclick="goTo('recovery')">Recovery</button>
+    <button class="proto-btn" data-mode="cloture" onclick="goTo('cloture')">Clôture</button>
+    <span class="proto-tag">Volet "pendant" — hypothèse</span>
+</div>
+
+<div class="app">
+
+    <!-- MODE PRÉSENCE -->
+    <div class="screen active" id="screen-presence">
+        <div class="presence-top">
+            <div class="presence-label">Consultation</div>
+            <div class="presence-name">Marie Dubois</div>
+            <div class="presence-timer" id="presence-timer">00:00</div>
+        </div>
+        <div>
+            <div class="presence-actions">
+                <button class="presence-action" onclick="goTo('capture')">
+                    <span class="presence-action-icon">⊞</span>
+                    <span class="presence-action-label">Capturer</span>
+                </button>
+                <button class="presence-action" onclick="goTo('lookup')">
+                    <span class="presence-action-icon">◎</span>
+                    <span class="presence-action-label">Dossier</span>
+                </button>
+                <button class="presence-action" onclick="goTo('interruption')">
+                    <span class="presence-action-icon">→</span>
+                    <span class="presence-action-label">Suivi</span>
+                </button>
+            </div>
+            <div class="presence-hint">Consultation terminée ? <a href="#" onclick="goTo('cloture');return false;" style="color:#A0AEC0;">Clôturer</a></div>
+        </div>
+    </div>
+
+    <!-- MODE CAPTURE -->
+    <div class="screen" id="screen-capture">
+        <div class="capture-sheet">
+            <div class="capture-label">◈ Capturer une note</div>
+            <textarea class="capture-input" placeholder="Ce que vous voulez retenir…" autofocus></textarea>
+            <div class="capture-footer">
+                <button class="btn-ghost" onclick="goTo('presence')">Annuler</button>
+                <button class="btn-primary" onclick="goTo('presence')">Enregistrer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODE LOOKUP -->
+    <div class="screen" id="screen-lookup">
+        <div class="lookup-header">
+            <button class="lookup-back" onclick="goTo('presence')">‹</button>
+            <div class="lookup-context">Consultation — <strong>Marie Dubois</strong></div>
+        </div>
+        <div class="lookup-body">
+            <h3>Dernier résultat biologique</h3>
+            <p>Contenu du dossier consulté en Mode Lookup — plein écran, un seul chemin de retour. Rien
+            d'autre ne s'affiche pendant cette consultation d'un élément spécifique (PP-010).</p>
+        </div>
+    </div>
+
+    <!-- MODE INTERRUPTION -->
+    <div class="screen" id="screen-interruption">
+        <div class="interrupt-icon">⏸</div>
+        <div class="interrupt-title">Consultation mise en pause</div>
+        <div class="interrupt-sub">L'état est conservé. Reprenez quand vous êtes prêt.</div>
+        <button class="btn-primary" onclick="goTo('recovery')">Reprendre plus tard →</button>
+    </div>
+
+    <!-- MODE RECOVERY -->
+    <div class="screen" id="screen-recovery">
+        <div class="recovery-eyebrow">Où vous en étiez</div>
+        <div class="recovery-card">
+            <div class="recovery-subject">Douleur épaule droite</div>
+            <div class="recovery-note">Dernière note : "Mobilité limitée en abduction, prévoir imagerie
+            si pas d'amélioration sous 15 jours."</div>
+        </div>
+        <div class="recovery-timer">Interruption : 3 min 40 s</div>
+        <button class="btn-primary" onclick="goTo('presence')">Reprendre</button>
+    </div>
+
+    <!-- MODE CLÔTURE -->
+    <div class="screen" id="screen-cloture">
+        <div class="cloture-header">
+            <div class="cloture-eyebrow">Clôture</div>
+            <div class="cloture-title">Marie Dubois</div>
+        </div>
+        <div class="cloture-body">
+            <div class="cloture-note-card">
+                <textarea placeholder="Note de consultation — texte libre">Mobilité limitée en abduction, épaule droite. Prévoir imagerie si pas d'amélioration sous 15 jours.</textarea>
+            </div>
+            <div class="cloture-actions">
+                <button class="cloture-chip">+ Prescription</button>
+                <button class="cloture-chip">+ Orientation</button>
+                <button class="cloture-chip">+ Examen</button>
+                <button class="cloture-chip">+ Prochain RDV</button>
+            </div>
+        </div>
+        <div class="cloture-footer">
+            <button class="btn-close-full" onclick="goTo('closed')">Terminer la consultation</button>
+            <button class="btn-close-quick" onclick="goTo('closed')">Rien à signaler — clôture rapide</button>
+        </div>
+    </div>
+
+    <!-- CLOSED -->
+    <div class="screen" id="screen-closed">
+        <div class="closed-icon">✓</div>
+        <div class="closed-title">Consultation fermée</div>
+        <div class="closed-sub">Le delta est disponible pour la prochaine consultation (WS-002).</div>
+        <button class="btn-ghost" onclick="resetDemo()" style="margin-top:8px;">Nouvelle consultation (démo)</button>
+    </div>
+
+</div>
+
+<div class="footer-note">
+    WS-003 · Consultation · Prototype v0.1 — architecture par modes, pas par blocs<br>
+    Q-003 — Puis-je consacrer toute mon attention au patient, et clore proprement quand c'est terminé ?
+</div>
+
+<script>
+let seconds = 0;
+let timerInterval = setInterval(() => {
+    seconds++;
+    const m = String(Math.floor(seconds / 60)).padStart(2, '0');
+    const s = String(seconds % 60).padStart(2, '0');
+    document.getElementById('presence-timer').textContent = `${m}:${s}`;
+}, 1000);
+
+function goTo(mode) {
+    document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
+    document.getElementById('screen-' + mode).classList.add('active');
+    document.querySelectorAll('.proto-btn').forEach(b => b.classList.remove('active'));
+    const btn = document.querySelector(`.proto-btn[data-mode="${mode}"]`);
+    if (btn) btn.classList.add('active');
+}
+
+function resetDemo() {
+    seconds = 0;
+    goTo('presence');
+}
+
+goTo('presence');
+</script>
+
+</body>
+</html>

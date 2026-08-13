@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Platforms\Clinical\Domain\ClinicalContribution\Event;
 
+use App\Shared\Domain\Event\DomainEventInterface;
 use App\Platforms\Clinical\Domain\ClinicalContribution\ValueObject\CareRecordId;
 use App\Platforms\Clinical\Domain\ClinicalContribution\ValueObject\ClinicalContributionId;
 use App\Platforms\Clinical\Domain\ClinicalContribution\ValueObject\ClinicalText;
@@ -14,7 +15,7 @@ use App\Platforms\Clinical\Domain\ClinicalContribution\ValueObject\PractitionerI
  * Recorded when a new Clinical Contribution is created in Draft state.
  * Immutable fact. Carries only projection-relevant data.
  */
-final readonly class ClinicalContributionCreated
+final readonly class ClinicalContributionCreated implements DomainEventInterface
 {
     public function __construct(
         public readonly ClinicalContributionId $clinicalContributionId,
