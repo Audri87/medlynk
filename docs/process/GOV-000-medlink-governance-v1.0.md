@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | ID | GOV-000 |
-| Version | 1.7 |
+| Version | 1.9 |
 | Status | **Accepted** — convention de marqueurs et chaîne de Gates contraignantes pour tout nouvel artefact |
 | Date | 2026-08-04 |
 | Nature | Charte de gouvernance — chaîne de responsabilité complète, de Reality à Software et retour |
@@ -163,6 +163,15 @@ Statut:                  Discovery (PDX) — jamais Décidé, jamais →
 - **RG-004** — Un PDX peut être abandonné sans impact sur le reste du produit. L'échec fait partie du
   processus — un PDX rejeté n'est pas un échec de gouvernance, au même titre qu'un PDR concluant qu'il
   est prématuré de décider (§4, Gate 2, v1.2).
+
+**Application à l'échelle d'un élément d'écran (v1.9, [ADR-0025](../adr/ADR-0025-innovations-produit-non-observees.md)).**
+Un élément non observé (bloc, action, état) n'exige pas un PDX complet : une fiche `HYP-<WS>-NNN`
+inline dans la fiche du Workspace suffit (Origine, problème visé, hypothèse, valeur attendue, risque
+si faux, test, **critère d'abandon**, statut). Le **critère d'abandon est obligatoire et déclaré avant
+le test** — seul ajout d'ADR-0025 à la discipline PDX. RG-001 à RG-004 inchangées : un élément sans
+friction documentée reste autorisé en prototype (Origine `Founder-Driven`) mais ne peut pas devenir
+PDX. Code produit : uniquement après Gate 3 (§4) — voir ADR-0025 §5 pour les types de code autorisés
+avant.
 
 **Deux dérives que ces règles préviennent, symétriques et aussi graves l'une que l'autre :**
 1. *"Le corpus ne parle pas de X, donc on ne peut pas le faire."* Faux — le corpus décrit des douleurs,
@@ -371,6 +380,18 @@ Blueprint` (le périmètre y est supposé acquis) ni abandonné. Il porte ce sta
 ne peut pas produire de Blueprint — seule une Discovery Question unique, ciblée sur la frontière
 elle-même (pas sur le contenu du Workspace), peut le faire progresser.
 
+**Règle v1.8 — un WBD a le droit de conclure qu'une responsabilité ne revient à aucun Workspace.**
+Symétrique à la Règle v1.2 ci-dessus, pour la même raison : ce n'est pas un échec du WBD, c'est l'une
+de ses issues valides (verdict `NO-WORKSPACE`, §5). Avant d'attribuer une responsabilité à une partie
+nommée Workspace, le WBD vérifie que cette partie satisfait la définition de `WSP-001` (projection
+assemblée pour un Actor). Une partie qui échoue à ce contrôle ne peut pas recevoir de statut Workspace,
+quelle que soit par ailleurs la qualité de la responsabilité qu'on cherchait à lui attribuer — cette
+responsabilité reste valide, mais relève d'un autre artefact (typiquement un ADR côté Engineering).
+Origine de cette règle : le cas WS-004 (`OBS-M2-013`, `ADR-0024`), qui a révélé que le format WBD
+antérieur à v1.8 ne posait jamais la question d'éligibilité avant de chercher à attribuer une
+responsabilité — WS-004 reste le cas qui a fait apparaître ce besoin, pas une exception réécrite pour
+lui : sa propre reclassification (`WBD-004` v2.2) n'est pas modifiée rétroactivement par cette règle.
+
 ### Gate 3 — Design → Engineering
 
 Conditions :
@@ -440,20 +461,37 @@ Blueprint doit exposer une **Definition of Done** par Gate à franchir — voir 
 Aucun autre type de document n'est officiel. Un document qui ne rentre dans aucune de ces cases sert
 un de ces artefacts (annexe, template, notes de travail) ou est superflu.
 
-**Format d'un WBD (v1.2)**, symétrique à DE-P-011 (Aggregate Promotion Rule) côté Domain — un WBD
-décide une frontière, pas un comportement produit :
+**Format d'un WBD (v1.2 ; contrôle d'éligibilité ajouté en v1.8, voir Changelog)**, symétrique à
+DE-P-011 (Aggregate Promotion Rule) côté Domain — un WBD décide une frontière, pas un comportement
+produit. **v1.8 ajoute un gate préalable** : avant de chercher quelle responsabilité revient à quel
+Workspace, vérifier que chaque partie en présence est effectivement un Workspace. Ce gate est distinct
+de l'attribution de responsabilité elle-même — il la précède, il ne s'y substitue pas.
 
 ```
 WBD-NNN — [Workspaces concernés]
+Éligibilité: Chacune des parties auxquelles une responsabilité Workspace est attribuée satisfait-elle
+            la définition de Workspace établie par WSP-001 (projection assemblée pour un Actor) ?
+            Si non pour une partie : cette partie ne peut pas recevoir de responsabilité Workspace,
+            quelle que soit la responsabilité identifiée — voir Verdict NO-WORKSPACE ci-dessous.
 Question:   Quelle responsabilité unique revient à quel Workspace ?
 Evidence:   [PAT/OBS disponibles, avec confiance — pas d'evidence sur le comportement lui-même,
             evidence sur QUI en est responsable]
 Verdict:    RESOLVED — territoire attribué explicitement à chaque Workspace
             | UNRESOLVED — evidence insuffisante pour trancher
+            | NO-WORKSPACE — la responsabilité identifiée ne revient à aucun Workspace ; la partie
+              concernée échoue au contrôle d'éligibilité, indépendamment de la qualité de la
+              responsabilité elle-même, qui peut rester valide sous une autre forme
 Si UNRESOLVED :
   - Workspace(s) concerné(s) passent au statut `Research Workspace — Boundary under investigation`
   - Une Discovery Question UNIQUE est formulée, ciblée sur la frontière elle-même
   - Aucun Blueprint n'est rédigé tant que le WBD n'est pas RESOLVED
+Si NO-WORKSPACE :
+  - Issue valide, pas un échec du WBD — symétrique à la règle Gate 2 v1.2 (un PDR a le droit de
+    conclure qu'aucune décision ne peut encore être prise)
+  - La responsabilité reste valide en tant que telle ; seule sa classification Workspace est retirée
+  - La partie concernée n'est listée dans aucun échantillon ou proof set de Workspaces
+  - La responsabilité est orientée vers l'artefact du niveau approprié (typiquement un ADR côté
+    Engineering) — ce document n'anticipe pas la forme que prendra cet artefact au cas par cas
 ```
 
 Un WBD n'est jamais un Product Decision Record déguisé : un PDR décide *ce qu'on construit*, un WBD
@@ -521,6 +559,9 @@ relatifs des documents existants, et mérite d'être actée explicitement avant 
 - Le Workspace Boundary Decision (WBD, §5/§6, v1.2) comme artefact distinct du PDR.
 - Le droit d'un PDR à conclure qu'aucune décision ne peut encore être prise (§4 Gate 2, v1.2), et le
   statut `Research Workspace — Boundary under investigation` qui en découle.
+- Le contrôle d'éligibilité Workspace préalable à toute attribution de responsabilité par un WBD (§5,
+  v1.8), et le droit symétrique d'un WBD à conclure qu'une responsabilité ne revient à aucun Workspace
+  (verdict `NO-WORKSPACE`, §4 Gate 2 Règle v1.8).
 - Product Discovery (PDX, §1bis, v1.4 — remplace le "circuit Innovation" v1.3), parallèle au circuit
   Discovery, et les quatre règles RG-001 à RG-004 : pas de PDX sans friction documentée, jamais de
   Product Principle direct, validation par prototype/test obligatoire, l'abandon fait partie du
@@ -545,3 +586,5 @@ la décision de migration physique des dossiers (§7, mapping).
 | 1.5 | 2026-08-04 | Suite à une revue d'architecture produit critique (Workspaces vs Cognitive Responsibilities) : **règle gelée non conditionnelle** — le vocabulaire Product ne descend jamais dans le Domain, étendue explicitement à tout futur artefact de gouvernance (§1ter-a). **Cognitive Responsibility introduite comme hypothèse méthodologique en expérimentation, pas comme gouvernance officielle** (§1ter-b) — protocole de test défini : construire WS-005 avec `Responsibility → Product Question → Workspace`, rétrospective (churn vs WS-004, stabilisation des décisions, délimitation du Workspace), intégration officielle seulement si validée. Relation avec Clinical State explicitée : une Responsibility est un cluster stable d'états, pas une paire (Current, Target) — la distinction préserve la transition inter-cluster DÉCIDE→PERDU déjà protégée par PP-011. Leçon de nommage appliquée par avance : "Collaboration" est déjà un nom de Plateforme (CLAUDE.md) — "Clinical Coordination" préféré pour l'éventuel WS-005. |
 | 1.7 | 2026-08-06 | **Sprint M1.1 — Consolidation.** Correction §1ter-b : la citation *"modèle Clinical State existant"* est reformulée en *"modèle de travail illustratif"*, avec renvoi explicite au disclaimer de WS-003 §6 (*"simplification pédagogique... hors du domaine logiciel, DE-P-001/002"*) — ce diagramme n'a jamais été un artefact du track Domain. Complète le Sprint M1.1 avec [ADR-0015](../adr/ADR-0015-canonical-discovery-pipeline.md) (pipeline canonique), [ADR-0016](../adr/ADR-0016-status-of-experimental-concepts.md) (statut des concepts), [ADR-0017](../adr/ADR-0017-freeze-semantics.md) (sémantique Accepted/Experimental/Frozen) et [ADR-0018](../adr/ADR-0018-evidence-traceability.md) (traçabilité evidence), plus des édits directs sur [WBD-004](../product/workspaces/WBD-004-consultation-vs-documentation.md) (table Sens du flux complétée pour WS-005/WS-006) et [WS-003](../product/workspaces/WS-003-consultation.md) §11 (frontières WS-004/WS-005/WS-006 explicitées). Aucun nouveau concept, aucun nouveau Workspace — réponse à la revue d'architecture M1 du 2026-08-06. |
 | 1.6 | 2026-08-06 | **Extension du protocole de test §1ter-b** : la validation de l'hypothèse Cognitive Responsibility ne repose plus sur WS-005 seul — elle doit résister à l'application sur WS-006 également avant toute intégration officielle. Décision utilisateur suite au démarrage effectif du test sur WS-005 (voir [WE-005](../product/workspaces/WE-005-information-flow.md), [CWRM-020-APX-WS005](../research/specifications/CWRM-020-APX-WS005-coordination-guide.md)). Un résultat positif sur un seul des deux Workspaces reste partiel ; une divergence entre les deux doit être documentée, pas arbitrée par défaut. |
+| 1.8 | 2026-09-09 | **Amendement ciblé, pas une nouvelle taxonomie — [ADR-0024](../adr/ADR-0024-ws004-nature-et-proof-set-m2.md), Option B.** Le cas WS-004 (`OBS-M2-013`) a révélé que le format WBD (§5) ne vérifiait jamais si les parties en présence satisfaisaient réellement `WSP-001` avant de leur attribuer une responsabilité Workspace — il tranchait *qui* possède une responsabilité, jamais *si l'objet qui la reçoit mérite le statut Workspace*. Deux ajouts, délibérément minimaux : (1) §5 — nouveau champ `Éligibilité` en tête du format WBD, et nouveau verdict `NO-WORKSPACE` (une responsabilité peut rester valide sans que son porteur soit un Workspace — orientée vers l'artefact du niveau approprié, typiquement un ADR) ; (2) §4 Gate 2 — Règle v1.8, symétrique à la Règle v1.2 déjà existante (un PDR peut conclure qu'aucune décision ne peut être prise ; un WBD peut désormais conclure qu'aucun Workspace ne reçoit la responsabilité). Explicitement écarté : une taxonomie complète des types d'objets (Application Service / Domain Concept / Platform...) — non nécessaire, `WSP-001` §"Ce que le Workspace n'est pas" couvre déjà "un Application Service" depuis l'origine du document. `WBD-004` n'est pas modifié rétroactivement par cet amendement — WS-004 reste le cas qui a révélé le besoin du garde-fou, pas une exception construite pour lui. |
+| 1.9 | 2026-10-05 | **Annotation, aucune règle modifiée — [ADR-0025](../adr/ADR-0025-innovations-produit-non-observees.md).** Les fiches d'implémentation Phase 2 avaient appliqué la dérive n°1 de §1bis (*"non observé donc non fondé"*). §1bis reçoit un paragraphe d'application : fiche `HYP-<WS>-NNN` légère pour un élément d'écran (au lieu d'un PDX complet), **critère d'abandon obligatoire déclaré avant le test** (généralise le garde-fou d'ADR-0020), renvoi vers ADR-0025 §5 pour les types de code autorisés avant Gate 3. RG-001 à RG-004, Gates, marqueurs, Origine : inchangés. |

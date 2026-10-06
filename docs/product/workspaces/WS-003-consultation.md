@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | ID | WS-003 |
-| Version | 2.7 |
+| Version | 3.2 |
 | Status | **Discovery Blueprint — Corpus Partial** |
 | Lifecycle | ☑ Discovery · ☑ Blueprint · ☑ Prototype · ☐ User Test · ☐ Production |
 | Workspace Lifecycle Chain | Discovery Blueprint → Corpus Consolidated → Candidate for Prototype → Validated Prototype — WS-003 est à l'étape 1 (voir §7 Definition of Done) |
@@ -254,6 +254,26 @@ Scope:           UX — Mode Capture and Mode Clôture share the same note field
 Origine:         Founder-Driven (GOV-000 v1.4) — Model C à l'origine ; evidence renforcée depuis par
                  WE-004, mais l'Origine ne change pas rétroactivement (GOV-000 §1bis, note)
 Statut:          → Décidé, evidence ≈. ⚠ Cohérence avec PP-009/PP-010 à vérifier en prototype.
+
+Extension (2026-09-10) — Actions accessibles pendant la consultation :
+Principle:       WS-003 SHALL also expose the production actions currently reserved to Mode Clôture
+                 (Ordonnance, Rendez-vous, Examen, Courrier) as reachable DURING the consultation,
+                 via a dedicated full-screen mode symmetric to Mode Lookup (Mode Action, §9) — not
+                 gated behind the patient's departure. Mode Présence's minimal budget (PP-009) is
+                 not altered by this extension: Mode Action is reached only by an explicit
+                 practitioner action, never surfaced passively.
+Design Decision: Décision produit (Founder-Driven) confirmant l'option (a) discutée sur le "Nouveau
+                 parcours" — plutôt que de lier la production au départ du patient (frontière
+                 temporelle historique de PP-013), la frontière devient purement fonctionnelle
+                 (Capture = note libre ponctuelle, Action = production structurée), symétrique à la
+                 distinction déjà actée pour Mode Lookup. Alternative écartée : garder la production
+                 exclusivement en Mode Clôture — jugée trop rigide face à des praticiens qui
+                 rédigent une ordonnance pendant que le patient est encore présent.
+Origine:         Founder-Driven — décision produit, evidence: ? (hors corpus, non testée). Distincte
+                 du evidence ≈ qui porte sur le principe original "pendant OU après" — cette
+                 extension n'a reçu aucun ancrage corpus propre.
+Statut:          → Décidé. ⚠ Cohérence avec PP-009/PP-010/PP-015 à vérifier en prototype — voir
+                 OQ-W-013, OQ-W-014 (§14).
 ```
 
 ---
@@ -406,7 +426,10 @@ L'architecture d'information de WS-003 est une architecture de **modes**, pas de
 
 ---
 
-### Six états, un seul flux
+### Sept états, un seul flux
+
+*(⚠ Extension 2026-09-10, PP-013 — Mode Action ajouté. Les six états d'origine ne sont pas modifiés ;
+un septième état est ajouté, symétrique à Mode Lookup dans son fonctionnement.)*
 
 ```
 Mode Présence (défaut)
@@ -418,6 +441,9 @@ Mode Présence (défaut)
     ├──→ Mode Lookup      "Je consulte un résultat ou l'historique."
     │         └──→ Mode Présence
     │
+    ├──→ Mode Action       "Je fais une ordonnance / un RDV / un examen / un courrier, maintenant."
+    │         └──→ Mode Présence            (⚠ 2026-09-10 — voir §9 Mode Action)
+    │
     └──→ Mode Interruption  "Je suis appelé."
               └──→ Mode Recovery  "Je reprends."
                         └──→ Mode Présence
@@ -428,7 +454,7 @@ Mode Clôture   "Je termine cette consultation."
     │
     ├──→ Clôture rapide     "Rien à signaler." (PP-015) ──→ consultation FERMÉE
     │
-    └──→ Clôture complète   note + prescription + orientation + RDV suivant ──→ consultation FERMÉE
+    └──→ Clôture complète   récapitulatif + note + actions restantes ──→ consultation FERMÉE
 ```
 
 ---
@@ -448,6 +474,9 @@ Les 3 actions rapides :
 - → Marquer pour suivi
 
 Comportement : aucune notification. Aucune mise à jour automatique. Aucun mouvement sur l'écran.
+
+*(⚠ Extension 2026-09-10, PP-013 — une 4ᵉ action rapide est ajoutée : ▤ Agir (ouvre Mode Action, §9
+ci-dessous). Icône seule, sans texte, même budget que les trois autres — ne modifie pas PP-009.)*
 
 ---
 
@@ -475,6 +504,33 @@ Comportement :
 - Le contexte de retour est affiché en haut : "Consultation — Marie Dubois"
 
 Contenu : résultat demandé, ou historique demandé — rien d'autre.
+
+---
+
+### Mode Action *(⚠ ajouté 2026-09-10 — Extension PP-013, evidence: ?, non testée)*
+
+**Objectif :** produire une ordonnance, une orientation, un examen, un courrier ou un RDV sans
+attendre la fin de la consultation — symétrique à Mode Lookup dans son fonctionnement, pas dans son
+contenu.
+
+Déclenchement : action praticien explicite (icône ▤ Agir, Mode Présence) — jamais automatique, jamais
+suggéré.
+
+Comportement :
+- Plein écran — remplace Mode Présence (même patron que Mode Lookup, PP-010)
+- Retour explicite : un seul bouton "Retour à la consultation"
+- Choix parmi : Ordonnance / Orientation / Examen / Courrier / Rendez-vous — même contenu que les
+  "Actions optionnelles" de Mode Clôture (voir plus bas), pas un objet distinct *(⚠ Orientation et
+  Courrier sont deux sorties distinctes, pas un renommage l'une de l'autre — résolu 2026-09-10,
+  OQ-W-013)*
+
+Ce qui est produit ici alimente la même liste de sorties que Mode Clôture (PP-013) — pas un second
+circuit. Une action réalisée en Mode Action reste visible comme **« Déjà réalisé »** au retour en
+Mode Présence, et apparaît dans le récapitulatif de Mode Clôture plutôt que d'y être proposée à
+nouveau.
+
+⚠ Non tranché : l'effet de Mode Action sur le sens de "Rien à signaler" (PP-015) en Mode Clôture —
+voir OQ-W-014.
 
 ---
 
@@ -514,8 +570,16 @@ traitement, pas l'invisibilité (PP-013).
 
 Contenu visible :
 - Note de consultation — texte libre, pré-rempli avec tout contenu de Mode Capture (PP-012, PP-013)
-- Actions optionnelles : prescription, orientation/référence, examen, prochain rendez-vous
+- Actions optionnelles : prescription, orientation/référence, examen, prochain rendez-vous *(⚠ +
+  courrier, ajouté 2026-09-10 — sortie distincte d'orientation/référence, résolu OQ-W-013)*
 - Action "Rien à signaler" — clôture en un clic sans contenu (PP-015)
+
+*(⚠ Extension 2026-09-10, PP-013 — Mode Clôture n'est plus l'unique porte d'entrée de ces actions.
+Contenu ajouté, rien retiré :*
+- *Récapitulatif des actions déjà réalisées en Mode Action pendant la consultation (« Déjà réalisé »)*
+- *"Actions optionnelles" ne propose plus que ce qui n'a pas déjà été fait en Mode Action*
+- *"Rien à signaler" (PP-015) reste disponible tel quel — son sens exact quand des actions ont déjà*
+  *été faites via Mode Action n'est pas tranché, voir OQ-W-014)*
 
 Ce que produit une consultation fermée :
 
@@ -526,12 +590,21 @@ Ce que produit une consultation fermée :
 | Orientation (optionnelle) | Immuable |
 | Examen prescrit (optionnel) | Immuable |
 | Prochain rendez-vous (optionnel) | Planifiable |
+| Courrier (optionnel) *(⚠ ajouté 2026-09-10)* | Immuable — sortie distincte d'Orientation, pas un renommage (résolu 2026-09-10, OQ-W-013, décision Founder-Driven) |
 
 Ces sorties alimentent l'historique du patient et deviennent le **delta** visible à la prochaine
 consultation (WS-002, Bloc Continuité).
 
 Tant que Mode Clôture n'a pas été exécuté, la consultation reste **OUVERTE** (PP-014) — WS-003 expose
 cet état ; il ne l'affiche pas lui-même sous forme de rappel (voir §11, frontière de Workspace).
+
+*(⚠ Ajout 2026-10-06 — décision produit Founder-Driven, evidence ?, non testée. Une action identifiée
+pendant la consultation mais non terminée à la clôture — ordonnance, courrier, examen, orientation,
+rendez-vous à poser, résultat à vérifier — n'est ni perdue (CAL-I-007) ni portée par WS-003 : elle
+apparaît dans **« À traiter »**, collection unique des actions restant à effectuer par le praticien,
+avec la provenance **Consultation** ([A-TRAITER-implementation](A-TRAITER-implementation.md)). WS-003
+ne possède pas cette collection ; il l'alimente. Aucun PP modifié. Dépend de la persistance réelle du
+Brouillon — HR-001 H-ES-001, `Open`.)*
 
 ---
 
@@ -581,6 +654,7 @@ mécanismes de rappel décrits par Model C — ceux-ci appartiennent à d'autres
 | Rappel de fin de journée | Liste des consultations non fermées | WS-006 — *"Je termine"* (nom fixé par [WBD-004](WBD-004-consultation-vs-documentation.md) v2.0 ; aucun Blueprint à ce jour, statut `Research Workspace`) |
 | Persistance de la capture | Contenu produit en Mode Clôture (note, prescription, orientation, examen, RDV) | WS-004 — nom à confirmer ([WBD-004](WBD-004-consultation-vs-documentation.md) : *"transformer la capture brute en mémoire clinique fiable, structurée, réutilisable"*) |
 | Partage avec d'autres acteurs | Sous-ensemble de ce que WS-004 persiste, destiné à être transmis | WS-005 — nom candidat *Clinical Coordination*, contesté (voir [WE-005](WE-005-information-flow.md) §9) |
+| ⚠ Reste-à-faire non traité *(ajout 2026-10-06)* | Action identifiée en consultation, non terminée à la clôture | **« À traiter »** — vue de travail, pas un Workspace ([A-TRAITER-implementation](A-TRAITER-implementation.md)) ; décision Founder-Driven, evidence ?, non testée |
 
 Cette séparation évite qu'un Consultation Workspace connaisse le planning ou le tableau de bord
 praticien — cohérent avec le principe MedLink "Never build a God Object."
@@ -591,6 +665,13 @@ praticien — cohérent avec le principe MedLink "Never build a God Object."
 > mentionner WS-004/WS-005 alors que WBD-004 les établit comme destinataires directs de la Clôture.
 > Les deux lignes ajoutées reflètent ce que WBD-004 affirme déjà ailleurs ; elles ne constituent pas
 > une nouvelle décision.
+
+> ⚠ **Flag 2026-09-10, non corrigé ici** — la ligne "WS-004" de la table ci-dessus cite encore le
+> texte antérieur à [WBD-004](WBD-004-consultation-vs-documentation.md) v2.3 (verdict NO-WORKSPACE,
+> 2026-09-09). La responsabilité qu'elle décrit reste réelle mais n'est plus portée par un Workspace
+> nommé WS-004 — voir WBD-004 v2.3 pour la redistribution exacte (CAL-001, HR-001 H-G1, capacité
+> Engineering conditionnelle à PDX-001). Correction de cette table hors scope du présent amendement
+> (qui porte sur PP-013/Mode Action) — signalé, non résolu unilatéralement ici.
 
 ---
 
@@ -643,6 +724,8 @@ fermeture triviale une fois le patient parti.
 | OQ-W-010 | Comment WS-003 gère-t-il une consultation qui s'étend sur plusieurs sessions (le patient revient en cours) ? | Scope limitation — hors périmètre actuel | Open — Model C |
 | OQ-W-011 | Le rappel de fin de journée (§11, Practitioner Workspace) doit-il déclencher une notification push, ou la présence au tableau de bord suffit-elle ? | Cross-Workspace — hors périmètre WS-003 direct | Open — Model C |
 | OQ-W-012 | ~~L'ouverture d'une consultation est-elle toujours explicite (PP-014), ou peut-elle être déduite de l'ouverture du dossier pendant un créneau planifié ?~~ **Résolue (ADR-0023, 2026-08-06)** — toujours explicite, jamais déduite. Ouvrir un patient ≠ démarrer une consultation. | PP-014 — déclenchement | Resolved |
+| OQ-W-013 | ~~"Courrier" (Mode Action/Clôture) est-il un renommage d'"Orientation/référence", ou une sortie distincte avec sa propre nature de donnée ?~~ **Résolue (2026-09-10, décision Founder-Driven)** — sortie distincte : un praticien peut produire une Orientation et un Courrier séparément sur la même consultation. | Sorties Mode Clôture — modèle de données | Resolved |
+| OQ-W-014 *(⚠ ajoutée 2026-09-10)* | "Rien à signaler" (PP-015) garde-t-il le même sens quand des actions ont déjà été réalisées en Mode Action pendant la consultation, ou faut-il distinguer "rien à signaler" (note vide) de "rien à ajouter" (actions déjà faites) ? | PP-015 × Mode Action — cohérence | Open — Founder-Driven, non tranché |
 
 > OQ-W-001 à 008 définissent le programme d'extraction corpus pour le volet "pendant" (Sprint 2, voir
 > §7 Definition of Done). OQ-W-009 à 012 reprennent le Challenge Request de Model C pour le volet
@@ -672,6 +755,7 @@ fermeture triviale une fois le patient parti.
 | PP-009, PP-010, PP-011 | → Décision, evidence ? + Design Decision explicite | Mission + Pattern partiel, GAP-W-001/002 |
 | PP-012, PP-015 | → Décision fondateur, evidence ? + Design Decision explicite | DEC-W-001, DEC-W-004 |
 | PP-013 | → Décision fondateur, evidence ≈ (renforcé 2026-08-04) + Design Decision explicite | DEC-W-002 + PAT-D-005 (WE-004, PDR-004 EV-401) |
+| PP-013 — extension Mode Action *(⚠ ajoutée 2026-09-10)* | → Décision fondateur, evidence **?** (non testée, distincte du ≈ ci-dessus) + Design Decision explicite | Aucun ancrage corpus — décision Founder-Driven pure |
 | PP-014 | → Décision fondateur, evidence **scindée** : ≈ pour l'état ouvert/fermé, ? pour le mécanisme de rappel (corrigé 2026-08-04, audit PDR-004) | DEC-W-003 + PAT-D-002 (état) ; Model C seul (rappels) |
 | DR-006 | ? Hypothèse | Inférence F004 vs F005 — non validé |
 | ex-DR-005/007/008 | ? Hypothèse (UX Constraint, pas Display Rule) | Inférence par profil — non validé |
@@ -698,10 +782,203 @@ doivent jamais être fusionnés dans la communication produit : "décidé" ne ve
 
 ---
 
-## 16. Évolution
+## 16. Fiche d'implémentation (Phase 2 — Freeze V1, 2026-10-05)
+
+> Couche ajoutée au-dessus du Blueprint ci-dessus (§1-15, inchangé). WS-003 est le Workspace le plus
+> construit du prototype (`WS-002-WS-003-parcours-v8.html`) — beaucoup d'alignements forts, mais aussi
+> les déviations les plus précises et les plus importantes à tracer de toute cette Phase 2.
+
+**Objectif.** Inchangé — Q-003, §1.
+
+**Entrée.** Depuis WS-002 uniquement ("Démarrer la consultation") — jamais déduite de l'ouverture du
+dossier (OQ-W-012, `Resolved` par ADR-0023, respecté : le bouton "Démarrer une consultation" retiré du
+Care Record pendant cette session allait dans ce sens).
+
+**Sortie.** → Mode Clôture → consultation fermée → écran "Consultation clôturée" → Mon Espace. → Care
+Record (bouton tête de bandeau + onglet contexte, "Voir le dossier complet"). → Mon Espace via "Mettre
+en pause" (Interruption, PP-011).
+
+**Actions (réelles vs décoratives).** Tout est réel dans ce Workspace — aucun bouton décoratif
+identifié, contrairement aux autres écrans du prototype. Seul le chrono "depuis 10:30" reste statique
+(pas un vrai décompte).
+
+**Alignements forts, confirmés précisément contre le Blueprint.**
+- **"Déjà réalisé"** (§9, Mode Action) — correspond exactement aux badges `presence-done` du
+  prototype : une action validée en Mode Action reste visible en Présence et disparaît du récapitulatif
+  de Clôture plutôt que d'y être reproposée. Match textuel, pas seulement fonctionnel.
+- **Mode Interruption/Recovery (PP-011)** — "dernier sujet + dernière note capturée, action unique
+  Reprendre" (§9) correspond précisément à `renderRecovery()`/`doResume()`.
+- **PP-015 ("Rien à signaler")** — `quickClose()` implémente exactement la clôture rapide sans
+  contenu décrite au §9.
+- **Frontière de Workspace (§11, table PP-014)** — le "Rappel de fin de journée" que WS-003
+  n'affiche pas lui-même est explicitement attribué à WS-006 dans le Blueprint. La carte
+  "Consultations encore ouvertes" de WS-006 (construite plus tôt dans cette session, avant la lecture
+  de ce passage) **est** ce rappel — alignement confirmé a posteriori, pas conçu comme tel au départ.
+- **OQ-W-013 (Resolved)** — Ordonnance/Orientation/Examen/Courrier/Rendez-vous comme 5 sorties
+  distinctes : exactement les 5 tuiles du Mode Action du prototype.
+
+**Déviations confirmées, précises — pas de simples rappels de la session précédente.**
+- **Contexte patient permanent.** PP-009 §Scope dit explicitement *"No persistent sidebars, no
+  auto-updating panels."* PP-010 dit explicitement *"Accessing information [...] SHALL replace the
+  primary view — not layer over it [...] No split-screen during consultation."* Le prototype fait
+  l'inverse sur les deux points à la fois (colonne latérale fixe, décision consciente du Product Owner,
+  déjà actée). Ce n'était pas seulement une tension avec le "Cognitive Contract" en général (§2) — ce
+  sont deux clauses de Scope nommément citées, contredites nommément.
+- **Barre d'onglets visible en permanence.** Le Blueprint décrit une "architecture de modes" sans
+  aucune chrome persistante en dehors des 3-4 icônes de Mode Présence — Mode Lookup et Mode Action sont
+  tous deux explicitement "plein écran — remplace Mode Présence." Une barre d'onglets visible dans
+  tous les modes est elle-même une forme de persistance/layering, renforçant la déviation PP-010
+  ci-dessus plutôt qu'une déviation séparée.
+- **Notes multiples (`validatedNotes`, array).** C'est la déviation la plus significative, **jamais
+  formalisée comme telle au moment de sa construction.** PP-012 : *"The consultation note SHALL be
+  free text"* — singulier. PP-013 : *"Ce qui est saisi [en Mode Capture] alimente **la même note** que
+  le Mode Clôture — pas un objet distinct."* La table des sorties de Mode Clôture (§9) liste **une
+  seule** "Note de consultation" comme sortie. Le prototype construit l'inverse : une liste ouverte de
+  notes indépendantes, chacune validée séparément comme Clinical Contribution immuable. Contrairement à
+  l'extension Mode Action (PP-013, amendement explicite et daté du 2026-09-10), **cette déviation n'a
+  reçu aucun amendement formel du Blueprint** — elle a été construite directement en session, sur
+  demande explicite ("pouvoir créer plusieurs notes"), sans jamais revenir corriger PP-012/013. À
+  traiter avant Phase 3/4 : soit amender PP-012/013 formellement (comme pour Mode Action), soit
+  reconnaître que le prototype a dérivé sans décision.
+
+**Données nécessaires.** Conformes au Blueprint pour Mode Action/Clôture (5 types de sortie). Non
+couvertes : persistance réelle du Brouillon au-delà de la session navigateur (`currentDraft` est un
+état JS volatile, pas un Aggregate — cf. `H-ES-001`, Hotspot Domain toujours `Open`, voir §trous
+identifiés en Phase 1).
+
+**États.** Présence, Draft (par clé), Action, Interruption/Recovery, Clôture — tous implémentés.
+Non implémenté : consultation s'étendant sur plusieurs sessions (OQ-W-010, toujours `Open`).
+
+**Erreurs / cas limites non couverts.**
+- OQ-W-014 (sens de "Rien à signaler" quand des actions ont déjà été validées en Mode Action) — reste
+  `Open`, correctement signalé dans le `hyp-note` du prototype depuis sa construction, pas résolu ici.
+- Une seule consultation en pause à la fois (`consultationPaused`, booléen global) — limite connue,
+  signalée dans le prototype, non corrigée.
+- Transcription IA (bouton "🎙️ Transcrire via IA") — correctement rattachée à PDX-001 (`Discovery`,
+  RG-002/RG-003 : aucun PP de WS-003 n'est modifié tant que PDX-001 n'est pas testé et validé). Le
+  prototype respecte cette règle — l'IA ne fait que proposer un contenu dans un Brouillon, jamais
+  d'écriture directe.
+
+**UX.** Renvoi au prototype v8 — avec deux niveaux de déviation à traiter distinctement avant Phase
+3/4 : les déviations **conscientes et déjà actées** (contexte permanent, onglets) contre la déviation
+**non formalisée** (notes multiples). Les deux premières ont été des décisions explicites du Product
+Owner, tracées dans le code au moment de la décision. La troisième ne l'a pas été — c'est la correction
+la plus importante à faire avant de considérer WS-003 comme une base stable pour l'engineering.
+
+### Requalification ADR-0025 (2026-10-06)
+
+> Lecture [ADR-0025](../../adr/ADR-0025-innovations-produit-non-observees.md). WS-003 est le Gold
+> Standard : ses PP restent normatifs. Les trois déviations relevées ci-dessus ne sont plus des
+> "dérives" : ce sont des **hypothèses explicites en concurrence avec un PP**, chacune avec un critère
+> d'abandon qui ramène au PP. **Aucun PP n'est amendé par cette section** — l'amendement (comme pour
+> Mode Action, v2.8) ne se fera qu'après résultat du test. Cela règle le statut de la déviation "notes
+> multiples" (qui n'est plus non tracée), pas la question elle-même. "Majorité" = plus de la moitié
+> des praticiens du round.
+
+| HYP | Élément | Origine | PP en concurrence | Problème visé |
+|---|---|---|---|---|
+| 001 | Carte "Contexte patient" permanente | Founder-Driven (PO, décision consciente) | PP-009 §Scope, PP-010 | Retrouver le contexte vite sans quitter l'échange |
+| 002 | Barre d'onglets persistante | Founder-Driven | PP-010 | Même que 001 + historique des actions (demande PO) |
+| 003 | Notes multiples | Founder-Driven (demande PO) | PP-012, PP-013, sorties de Clôture §9 | Aucun ancrage — à documenter |
+| 004 | Modèles (ordonnance) dans le Brouillon | Founder-Driven | — | Aucun ancrage — à documenter |
+
+```
+HYP-003-001 — Contexte patient permanent
+Hypothèse:          Garder allergies, pathologies et traitement visibles évite les allers-retours sans
+                    détourner l'attention du patient
+Risque si faux:     Exactement ce que PP-010 protège : attention captée par l'écran, charge visuelle
+                    pendant la relation
+Test:               Consultation simulée : le praticien consulte-t-il la carte ? Mesurer les passages
+                    en Lookup ; demander s'il s'est senti distrait
+Critère d'abandon:  La majorité ne la regarde pas pendant l'échange, ou se dit distraite → retour à
+                    PP-010 (Lookup plein écran à la demande)
+Statut:             ? ⚠ — À tester · PP-009/PP-010 restent normatifs
+
+HYP-003-002 — Onglets persistants
+Hypothèse:          Une navigation visible permet de retrouver historique, notes et actions sans
+                    mémoriser des modes
+Risque si faux:     Chrome permanente contraire à l'architecture de modes (§9)
+Test:               Couplé à HYP-003-001 ; tâche "retrouvez la dernière ordonnance" — onglet ou Lookup ?
+Critère d'abandon:  Abandon conjoint avec HYP-003-001, ou si la majorité ne passe jamais par les onglets
+Statut:             ? ⚠ — À tester
+
+HYP-003-003 — Notes multiples
+Hypothèse:          Un praticien veut séparer ses notes au cours d'une même consultation (par sujet, par
+                    moment)
+Risque si faux:     Fragmentation ; Capture (PP-013) ne sait plus quelle note alimenter ; Clôture moins
+                    lisible
+Test:               Consultation simulée à deux sujets : le praticien crée-t-il une 2ᵉ note sans y être
+                    invité ? Pourquoi ?
+Critère d'abandon:  La majorité écrit une seule note → retour à une note unique (PP-012/013)
+Statut:             ? ⚠ — À tester · PP-012/PP-013 restent normatifs. Côté Domain, aucune
+                    contradiction relevée (chaque note validée = une Clinical Contribution, CAL-001) —
+                    la question est de produit, pas de Domain
+
+HYP-003-004 — Modèles dans le Brouillon
+Hypothèse:          Pré-remplir un brouillon à partir d'un modèle accélère les sorties répétitives
+Risque si faux:     Contenu générique non relu, validé tel quel
+Test:               Le praticien utilise-t-il le modèle ? Le modifie-t-il avant validation ?
+Critère d'abandon:  Non utilisé par la majorité → retiré. Validé sans relecture → maintenu mais
+                    l'action de validation doit être revue (CAL-I-003, validation explicite)
+Statut:             ? ⚠ — À tester
+```
+
+### Décisions du 2026-10-06 — « À traiter » et fiche patient
+
+**Reste-à-faire de consultation → « À traiter »** — `Product Decision` (Founder-Driven, evidence ?).
+Inscrit en ⚠ dans §9 (Mode Clôture) et §11 (table des frontières). Déjà fondé dans le Blueprint :
+PP-011 (*"pending items"*), Mode Interruption (*"Items marqués pour suivi"*), Mode Clôture
+(récapitulatif + reste-à-faire, v2.8). Seule nouveauté : la destination.
+
+**Fiche patient (données administratives)** — `Product Decision` + `Architecture Constraint`
+(ADR-0010 Invariant 3). Accessible depuis WS-003 sans quitter la consultation. **Forme dans WS-003 :
+déjà fixée par PP-010** (*"replace the primary view — not layer over it [...] returning SHALL require
+one action only"*) — Lookup plein écran, état de consultation conservé. Un drawer, modal ou panneau
+superposé serait une hypothèse en concurrence avec PP-010, au même titre que HYP-003-001 ; aucune
+n'est ouverte à ce jour. Voir [CARE-RECORD-implementation](CARE-RECORD-implementation.md).
+
+```
+HYP-003-005 — Noter une action pendant une interruption
+Origine:            Founder-Driven — Innovation
+Problème visé:      PP-011 / PAT-W-002 (pas d'outil de reprise après interruption). Pour la demande
+                    d'un confrère pendant la consultation : aucun ancrage corpus — à documenter ;
+                    rejoint HR-001 H-VRB-001 (transmission verbale, Open)
+Hypothèse:          Pouvoir noter en quelques mots une action à faire au moment de l'interruption, sans
+                    traiter la demande, évite de la perdre ou de la garder en tête
+Valeur attendue:    Reprendre la consultation l'esprit libre ; retrouver l'action dans « À traiter »,
+                    provenance Interruption
+Risque si faux:     Chrome supplémentaire en consultation (PP-009) ; l'action concerne souvent un
+                    AUTRE patient que celui de la consultation — tension avec PP-010 (un seul focus).
+                    Garde-fou : saisie en texte libre, patient facultatif, aucun contexte de l'autre
+                    patient ouvert dans WS-003
+Test:               Scénario d'interruption scripté (confrère demande un rappel concernant un autre
+                    patient) : le praticien utilise-t-il la saisie ? Préfère-t-il papier ou mémoire ?
+Critère d'abandon:  La majorité ne l'utilise pas ou préfère un autre support → retrait. Placement :
+                    en Mode Interruption uniquement ; Mode Recovery garde son action unique "Reprendre"
+Statut:             ? ⚠ — À tester. Côté écriture : source de vérité non définie (HR-001, question
+                    Domain ouverte du 2026-10-06)
+```
+
+**OQ-W-011** (rappel de fin de journée : push ou tableau de bord ?) — partiellement couverte : la
+présence au tableau de bord passe par le compteur « À traiter » de Mon espace. La question du push
+reste `Open`.
+
+**PDX-001 (transcription IA)** : déjà sous cycle PDX, aucun PP modifié. Mais PDX-001 n'a **pas de
+critère d'abandon** déclaré, et ADR-0025 le rend obligatoire. Proposition, à confirmer avant le
+round : *la majorité refuse l'enregistrement, ou corrige plus de la moitié de la synthèse proposée →
+PDX-001 abandonné (RG-004)*. Non reporté dans PDX-001 sans validation.
+
+---
+
+## 17. Évolution
 
 | Version | Date | Nature |
 |---|---|---|
+| 3.2 | 2026-10-06 | Décisions produit du 2026-10-06 : ⚠ ajout §9 (Mode Clôture) et §11 (table des frontières) — le reste-à-faire non traité à la clôture alimente « À traiter », collection unique dont WS-003 n'est pas propriétaire (Founder-Driven, evidence ?, aucun PP modifié). §16 : HYP-003-005 (noter une action pendant une interruption, Innovation) ; fiche patient accessible en Lookup, forme fixée par PP-010 ; OQ-W-011 partiellement couverte. |
+| 3.1 | 2026-10-06 | Requalification [ADR-0025](../../adr/ADR-0025-innovations-produit-non-observees.md) (§16) : contexte permanent, onglets persistants et notes multiples deviennent des hypothèses explicites en concurrence avec PP-009/010 et PP-012/013 (HYP-003-001 à 003), critère d'abandon = retour au PP. **Aucun PP amendé.** HYP-003-004 (modèles). PDX-001 sans critère d'abandon — proposition formulée, non reportée. |
+| 3.0 | 2026-10-05 | §16 ajoutée — Fiche d'implémentation (Phase 2, freeze V1). Alignements forts confirmés (Mode Action/"Déjà réalisé", Interruption/Recovery, PP-015, frontière WS-006). Déviations précisées : contexte permanent et onglets persistants contredisent nommément PP-009 §Scope et PP-010 (pas seulement le Cognitive Contract en général) ; notes multiples contredisent PP-012/PP-013 et la table des sorties de Mode Clôture — **jamais amendée formellement**, contrairement à l'extension Mode Action qui l'a été. Transcription IA correctement rattachée à PDX-001, aucun PP modifié. |
+| 2.9 | 2026-09-10 | **Résolution OQ-W-013** (décision Founder-Driven). "Courrier" et "Orientation/référence" sont deux sorties distinctes, pas un renommage l'une de l'autre — un praticien peut produire les deux séparément sur la même consultation. Mode Action (§9) mis à jour : 5 choix (Ordonnance / Orientation / Examen / Courrier / RDV) au lieu de 4. "Actions optionnelles" de Mode Clôture annoté en conséquence (+ courrier). Table des sorties (§9) : annotation "statut non tranché" retirée de la ligne Courrier. OQ-W-013 marquée Resolved (§14). OQ-W-014 (sens de "Rien à signaler") reste seule ouverte. |
+| 2.8 | 2026-09-10 | **Amendement — extension PP-013 (décision Founder-Driven, evidence ?, non testée).** Suite à la confirmation explicite de l'option (a) sur le "Nouveau parcours" WS-003 : les actions de production (Ordonnance, Rendez-vous, Examen, Courrier), jusqu'ici réservées à Mode Clôture, deviennent accessibles pendant la consultation via un nouveau **Mode Action** (§9), symétrique à Mode Lookup — plein écran, retour explicite, déclenché par une 4ᵉ icône en Mode Présence (▤ Agir). PP-009/PP-010 ne sont pas modifiés (même budget minimal). Mode Clôture devient récapitulatif + reste-à-faire, plus l'unique porte d'entrée ; "Rien à signaler" (PP-015) préservé tel quel. "Courrier" ajouté à la table des sorties, statut non tranché (renommage d'Orientation ou sortie distincte — OQ-W-013). OQ-W-013 et OQ-W-014 ajoutées. Table §11 (frontière WS-004) flaguée comme obsolète suite à WBD-004 v2.3 (NO-WORKSPACE), non corrigée ici — hors scope de cet amendement. Rien retiré du texte v2.7 ; toutes les additions sont marquées ⚠ et datées in situ. |
 | 0.1 | 2026-08-04 | Blueprint initial — Discovery phase. Corpus extraction à lancer. |
 | 1.1 | 2026-08-04 | Merge avec Model C — ajout Mode Clôture, DEC-W-001 à 004, PP-012 à PP-015, OQ-W-009 à 012, frontière WS-002 / Practitioner Workspace. |
 | 2.0 | 2026-08-04 | Reconstruction post-review externe : Cognitive Contract (§2) et Definition of Done (§7) restaurés ; couche Design Decision ajoutée à chaque PP ; Corpus Gaps rendus explicites (GAP-W-001 à 003) ; correction du scope réel de OBS-W-001/002 (hors consultation, pas dans-scope) ; Display Rules non profilées reclassées en UX Constraints (§5) ; identifiants PP gelés définitivement ; Cognitive Flow renommé Illustrative + dynamique réelle non linéaire ajoutée (§6) ; Read Model Needs de niveau produit ajouté, détail technique renvoyé vers ADR-SA-008/011 (§10) ; statut corrigé en "Discovery Blueprint — Corpus Partial". |

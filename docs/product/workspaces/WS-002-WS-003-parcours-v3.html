@@ -3,28 +3,30 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MedLink — Parcours principal V2</title>
+<title>MedLink — Parcours principal V3</title>
 <!--
     Statut interne (non affiché au praticien) :
-    Implémente ADR-0023 (Dashboard → WS-002 → WS-003 → Care Record).
-    Style visuel repris intégralement de probe-dossier-v1.html (mêmes tokens de couleur,
-    même typographie, même bandeau patient) à la demande du Product Owner, pour un test praticien.
+    v3 = v2 (WS-002-WS-003-parcours-v2.html) inchangée sur WS-002 / WS-003 / Care Record / Pause-Recovery
+    — tout ça reste "figé" au sens du challenge du 2026-09-08, aucune régression volontaire.
 
-    Écart assumé et signalé (pas silencieux) : les compteurs "7 Traitements / 2 Alertes / 12 ans
-    Suivi" du bandeau de probe-dossier-v1.html ne sont PAS repris dans le bandeau WS-002 ci-dessous.
-    Cette densité avait déjà été identifiée en session comme relevant du Care Record (profondeur du
-    dossier), pas de WS-002 ("Patient Context" — Non-Goals ADR-0023 §3 : "WS-002 ne doit pas devenir
-    un dossier médical complet"). Ces compteurs sont réutilisés uniquement sur l'écran Care Record,
-    où ils ont leur place.
+    Seul le Dashboard ('dash') change, suite à la maquette proposée le 2026-09-08 puis corrigée après
+    revue : la première version avait un bloc "À préparer" séparé qui dupliquait le planning
+    (Michel Rousseau et Jean Morel apparaissaient deux fois avec le même texte) et qui inversait
+    l'invariant le plus solide du corpus (planning = point d'entrée, confirmé 5/5). La version
+    intégrée ici corrige les deux : pas de bloc séparé, le signal (résultat/courrier/à revoir) est
+    porté par une pastille directement sur la ligne du planning concernée — dans l'esprit de ce que
+    la base testait déjà (schedule-mini-context), pas une nouvelle zone.
 
-    Corrections structurelles de la v2 précédente, conservées :
-    - Retour Care Record dépend de l'origine (WS-002 ou WS-003).
-    - Grid Lookup : Care Record est un point d'entrée unique (Résultats/Historique en sont des
-      sous-sections, pas des accès parallèles).
+    Statut de chaque ajout, à vérifier au prochain round (rien ici n'est 🟢 figé) :
+    - Pastille de statut colorée par ligne (vert/bleu/orange) — 🟡 hypothèse, contenu proche
+      d'OBS-M2-006 (un seul praticien), forme jamais testée.
+    - Barre de recherche, cloche, aide, bloc utilisateur avec spécialité, ligne de pause déjeuner,
+      pagination "Voir plus de rendez-vous", footer — 🟡 hypothèses pures, zéro donnée terrain.
+    - "À votre attention" : contenu inchangé par rapport à v2, vérifié non dupliqué avec le planning
+      (Sophie Martin / Jean Morel y montrent une info différente de leur ligne de planning).
 
-    Toujours volontairement non tranché : densité des tags du bandeau patient (voir
-    CWRM-020-APX-M2-workspace-questionnaires.md §2 — question ajoutée le 2026-08-06).
-    Toujours absent : Mode Interruption/Recovery (5e mode de WS-003, ADR-0023 §4).
+    Le reste du fichier (WS-002, WS-003, Care Record, pause/reprise, navigation contextuelle) est une
+    copie fidèle de v2 — voir ce fichier pour l'historique de ces sections.
 -->
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -41,10 +43,8 @@
     --alert-border: #fecaca;
     --warn: #d97706;
     --warn-bg: #fffbeb;
-    /* --ok / --purple retirés le 2026-09-08 : déclarés mais jamais utilisés dans le HTML — le
-       système réel est bleu (--accent) + rouge/orange (--alert/--warn), pas "bleu + vert". Si un
-       usage réel apparaît (ex. statut "à jour"), les réintroduire avec un usage concret, pas comme
-       tokens en réserve. */
+    --ok: #16a34a; /* réintroduit en v3 : usage réel — pastille "Nouveau résultat", statut footer */
+    --ok-bg: #f0fdf4;
     --text: #111827;
     --text-muted: #6b7280;
     --text-subtle: #9ca3af;
@@ -82,7 +82,29 @@
     background: #2d3f5c; color: #60a5fa;
     font-weight: 700; font-size: 12px;
     display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
   }
+  /* Dashboard uniquement — barre de recherche, cloche/aide, bloc utilisateur avec spécialité */
+  .topbar-search {
+    flex: 1; max-width: 460px; display: flex; align-items: center; gap: 8px;
+    background: rgba(255,255,255,0.07); border: 1px solid #2d3f5c; border-radius: 8px;
+    padding: 8px 12px; color: #8fa3bf; font-size: 13px;
+  }
+  .topbar-icon-btn {
+    position: relative; width: 34px; height: 34px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: #c9d8ed; font-size: 15px; cursor: default;
+  }
+  .topbar-icon-btn:hover { background: rgba(255,255,255,0.08); }
+  .topbar-icon-badge {
+    position: absolute; top: -2px; right: -2px; background: var(--alert); color: #fff;
+    font-size: 9px; font-weight: 700; border-radius: 10px; padding: 1px 4px; min-width: 14px; text-align: center;
+  }
+  .topbar-user { display: flex; align-items: center; gap: 10px; cursor: default; }
+  .topbar-user-info { line-height: 1.25; }
+  .topbar-user-name { font-size: 13px; color: #fff; font-weight: 600; }
+  .topbar-user-role { font-size: 11px; color: #8fa3bf; }
+  .topbar-chevron { color: #6b7f9c; font-size: 10px; }
 
   /* ── Patient banner ── */
   .patient-banner {
@@ -147,35 +169,6 @@
   }
   .dash-main { flex: 1; padding: 24px; }
 
-  /* ── Planning : contexte par rendez-vous mis en bloc (probe-dashboard-v2.html) ── */
-  .schedule-item {
-    display: flex; align-items: stretch; border-bottom: 1px solid var(--border);
-    cursor: pointer; transition: background 0.1s;
-  }
-  .schedule-item:last-child { border-bottom: none; }
-  .schedule-item:hover { background: #f9fafb; }
-  .schedule-time {
-    flex-shrink: 0; width: 56px; padding: 14px 8px 12px 16px;
-    font-size: 13px; font-weight: 600; color: var(--text-muted);
-  }
-  .schedule-body { flex: 1; padding: 11px 8px 11px 0; }
-  .schedule-name { font-weight: 600; font-size: 13px; }
-  .schedule-tags { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 4px; }
-  .schedule-reason { display: inline-block; font-size: 11px; padding: 2px 7px; border-radius: 4px; font-weight: 500; }
-  .reason-suivi { background: #dbeafe; color: #1d4ed8; }
-  .reason-premier { background: #d1fae5; color: #065f46; }
-  .schedule-mini-context {
-    font-size: 11px; color: var(--text-muted); margin-top: 6px; line-height: 1.4;
-    padding: 5px 8px; background: #f8fafc; border-left: 2px solid var(--border); border-radius: 0 3px 3px 0;
-  }
-  .schedule-mini-context.has-alert { background: #fff8f8; border-left-color: var(--alert); color: #7f1d1d; }
-  .schedule-right {
-    flex-shrink: 0; padding: 12px 16px; display: flex; flex-direction: column;
-    align-items: flex-end; justify-content: center; gap: 4px;
-  }
-  .schedule-age { font-size: 12px; color: var(--text-subtle); }
-  .alert-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--alert); }
-
   /* ── Cards ── */
   .card {
     background: var(--surface); border: 1px solid var(--border);
@@ -191,8 +184,6 @@
   .card-body { padding: 16px; }
   .muted { color: var(--text-muted); }
 
-  .grid-2 { display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; align-items: start; }
-
   .list-row {
     border: 1px solid var(--border); border-radius: var(--radius);
     padding: 12px 14px; display: flex; justify-content: space-between; align-items: center;
@@ -207,7 +198,65 @@
   }
   .btn:hover { opacity: 0.8; }
   .btn-primary { background: var(--accent); color: white; border-color: var(--accent); font-weight: 600; }
-  .btn-link { border: none; background: none; color: var(--accent); padding: 0; font-weight: 500; }
+  .btn-link { border: none; background: none; color: var(--accent); padding: 0; font-weight: 500; cursor: pointer; font: inherit; }
+
+  /* ── Dashboard v3 : en-tête, planning en lignes, "à votre attention", footer ── */
+  .tagline-pill {
+    background: var(--ok-bg); border: 1px solid #bbf7d0; border-radius: 10px;
+    padding: 12px 18px; font-size: 13px; color: #166534; font-style: italic;
+    display: flex; align-items: center; gap: 10px; max-width: 320px; flex-shrink: 0;
+  }
+  .planning-header, .attn-header {
+    display: flex; align-items: center; gap: 10px; padding: 12px 16px;
+    border-bottom: 1px solid var(--border); flex-wrap: wrap;
+  }
+  .planning-header .card-header-title, .attn-header .card-header-title { margin-right: auto; }
+  .date-nav {
+    display: flex; align-items: center; gap: 10px; border: 1px solid var(--border);
+    border-radius: 6px; padding: 6px 12px; font-size: 13px;
+  }
+  .date-nav button { border: none; background: none; cursor: pointer; color: var(--text-muted); font-size: 13px; font-family: inherit; }
+
+  .sched-row { display: flex; align-items: flex-start; gap: 12px; border-bottom: 1px solid var(--border); padding: 12px 16px; }
+  .sched-row:last-child { border-bottom: none; }
+  .sched-dot-col { width: 8px; padding-top: 6px; flex-shrink: 0; }
+  .sched-dot { width: 8px; height: 8px; border-radius: 50%; background: #d1d5db; }
+  .sched-dot.g { background: var(--ok); }
+  .sched-dot.b { background: var(--accent); }
+  .sched-dot.o { background: var(--warn); }
+  .sched-row-time { width: 48px; flex-shrink: 0; font-size: 13px; font-weight: 600; color: var(--text-muted); }
+  .sched-row-body { flex: 1; }
+  .sched-row-name { font-weight: 600; font-size: 13px; }
+  .status-pill {
+    display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600;
+    padding: 3px 9px; border-radius: 12px; margin-top: 5px;
+  }
+  .status-pill .d { width: 6px; height: 6px; border-radius: 50%; }
+  .status-pill.g { background: var(--ok-bg); color: #166534; } .status-pill.g .d { background: var(--ok); }
+  .status-pill.b { background: #eff6ff; color: #1d4ed8; } .status-pill.b .d { background: var(--accent); }
+  .status-pill.o { background: #fff7ed; color: #9a3412; } .status-pill.o .d { background: var(--warn); }
+  .sched-row-motif { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+  .sched-row-detail { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .sched-row-actions { display: flex; align-items: center; gap: 10px; flex-shrink: 0; padding-top: 2px; }
+  .row-menu { color: var(--text-subtle); font-size: 14px; }
+  .pause-row { background: #f8fafc; padding: 10px 16px; font-size: 12px; color: var(--text-subtle); }
+
+  .attn-grid { display: flex; }
+  .attn-item { flex: 1; display: flex; gap: 10px; padding: 14px 16px; }
+  .attn-item + .attn-item { border-left: 1px solid var(--border); }
+  .attn-icon {
+    width: 32px; height: 32px; border-radius: 8px; background: #eff6ff; color: var(--accent);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 14px;
+  }
+
+  .dash-footer {
+    margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 12px; color: var(--text-subtle); flex-wrap: wrap; gap: 10px;
+  }
+  .dash-footer .brand { font-weight: 700; color: var(--text-muted); }
+  .dash-footer .links { display: flex; gap: 16px; align-items: center; }
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); display: inline-block; margin-right: 4px; }
 
   /* ── WS-002 blocks ── */
   .ws2-blocks { display: grid; gap: 10px; margin-top: 16px; }
@@ -249,7 +298,7 @@
   /* ── Care Record ── */
   .record-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
   .record-card { border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; background: var(--surface); transition: box-shadow 0.2s, border-color 0.2s; }
-  .record-card.target { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-light, #dbeafe); }
+  .record-card.target { border-color: var(--accent); box-shadow: 0 0 0 2px #dbeafe; }
   .rc-list { margin-top: 10px; }
   .rc-item { display: flex; gap: 8px; font-size: 12px; padding: 5px 0; border-top: 1px solid #f0f2f4; }
   .rc-item:first-child { border-top: none; }
@@ -276,89 +325,183 @@
   <div class="topbar-logo">Med<span>Link</span></div>
   <div class="topbar-sep" id="topbar-sep"></div>
   <button class="topbar-back hidden" id="topbar-back"></button>
+  <div class="topbar-search hidden" id="topbar-search">🔍 <span>Rechercher un patient (nom, date de naissance…)</span></div>
   <div class="topbar-right">
-    <div class="topbar-practitioner">Dr. A. Durand</div>
-    <div class="topbar-avatar">AD</div>
+    <div id="topbar-simple" class="hidden" style="display:flex;align-items:center;gap:16px">
+      <div class="topbar-practitioner">Dr. A. Durand</div>
+      <div class="topbar-avatar">AD</div>
+    </div>
+    <div id="topbar-dash-right" class="hidden" style="display:flex;align-items:center;gap:4px">
+      <div class="topbar-icon-btn">🔔<span class="topbar-icon-badge">3</span></div>
+      <div class="topbar-icon-btn">❓</div>
+      <div class="topbar-user">
+        <div class="topbar-avatar">AD</div>
+        <div class="topbar-user-info">
+          <div class="topbar-user-name">Dr Audrey Durand</div>
+          <div class="topbar-user-role">Médecine générale</div>
+        </div>
+        <span class="topbar-chevron">▾</span>
+      </div>
+    </div>
   </div>
 </div>
 
-<!-- ═══ DASHBOARD ═══ -->
+<!-- ═══ DASHBOARD — v3 ═══ -->
 <section id="dash" class="page" style="max-width:none;padding:0">
   <div class="layout">
 
-    <!-- Sidebar — reprise telle quelle de probe-dashboard-v2.html, ajoutée au Dashboard uniquement -->
     <nav class="sidebar">
-      <div class="sidebar-section-label">Navigation</div>
-      <div class="sidebar-item active"><span class="icon">🏠</span> Mon espace</div>
-      <div class="sidebar-item"><span class="icon">📅</span> Planning</div>
-      <div class="sidebar-item"><span class="icon">🔔</span> Nouveautés<span class="sidebar-badge">4</span></div>
-      <div class="sidebar-item"><span class="icon">💬</span> Messages<span class="sidebar-badge-warn">1</span></div>
-      <div class="sidebar-section-label">Patients</div>
-      <div class="sidebar-item"><span class="icon">🔍</span> Rechercher</div>
-      <div class="sidebar-item"><span class="icon">📝</span> À traiter</div>
-      <div class="sidebar-section-label">Travail</div>
-      <div class="sidebar-item"><span class="icon">📄</span> Ordonnances</div>
-      <div class="sidebar-item"><span class="icon">📬</span> Résultats</div>
-      <div class="sidebar-item"><span class="icon">📋</span> Consultations</div>
+      <div style="flex:1">
+        <div class="sidebar-section-label">Navigation</div>
+        <div class="sidebar-item active"><span class="icon">🏠</span> Mon espace</div>
+        <div class="sidebar-item"><span class="icon">📅</span> Planning</div>
+        <div class="sidebar-item"><span class="icon">🔔</span> Nouveautés<span class="sidebar-badge">3</span></div>
+        <div class="sidebar-item"><span class="icon">💬</span> Messages</div>
+        <div class="sidebar-section-label">Patients</div>
+        <div class="sidebar-item"><span class="icon">🔍</span> Rechercher</div>
+        <div class="sidebar-item"><span class="icon">📝</span> À traiter<span class="sidebar-badge-warn">5</span></div>
+        <div class="sidebar-section-label">Travail</div>
+        <div class="sidebar-item"><span class="icon">📄</span> Ordonnances</div>
+        <div class="sidebar-item"><span class="icon">📬</span> Résultats</div>
+        <div class="sidebar-item"><span class="icon">📋</span> Consultations</div>
+        <div class="sidebar-item"><span class="icon">✉️</span> Courriers</div>
+      </div>
+      <div class="sidebar-item" style="margin-top:auto"><span class="icon">⚙️</span> Paramètres</div>
     </nav>
 
     <div class="dash-main">
       <div class="breadcrumb">Mon espace</div>
-      <h1 style="font-size:22px;margin-bottom:4px">Bonjour, Dr. Durand</h1>
-      <p class="muted" style="margin-bottom:20px">Votre journée et ce qui mérite votre attention.</p>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:20px;margin-bottom:20px;flex-wrap:wrap">
+        <div>
+          <h1 style="font-size:22px;margin-bottom:4px">Bonjour, Dr Audrey Durand</h1>
+          <p class="muted">Mardi 8 septembre 2025</p>
+        </div>
+        <div class="tagline-pill">🌿 <span>« Prendre soin de vos patients, simplement. »</span></div>
+      </div>
+
       <div id="resume-banner" class="card resume-banner hidden">
         <span>⏸ Consultation en pause avec <b>Michel Rousseau</b></span>
         <button class="btn btn-primary" onclick="resumeConsultation()">Reprendre →</button>
       </div>
-      <div class="grid-2">
-        <div class="card">
-          <div class="card-header"><span>🗓️</span><span class="card-header-title">Planning du jour</span></div>
-          <div>
-            <div class="schedule-item" onclick="openPatient()">
-              <div class="schedule-time">10:30</div>
-              <div class="schedule-body">
-                <div class="schedule-name">Michel Rousseau</div>
-                <div class="schedule-tags"><span class="schedule-reason reason-suivi">Suivi diabète</span></div>
-                <div class="schedule-mini-context has-alert">HbA1c 8,1 % — en hausse · Discuter ajustement traitement</div>
-              </div>
-              <div class="schedule-right">
-                <div class="schedule-age">58 ans</div>
-                <div class="alert-dot"></div>
-              </div>
+
+      <div class="card">
+        <div class="planning-header">
+          <span>🗓️</span><span class="card-header-title">Planning du jour</span>
+          <div class="date-nav"><button>‹</button><span>Mardi 8 septembre 2025</span><button>›</button></div>
+          <button class="btn btn-primary">+ Ajouter un rendez-vous</button>
+        </div>
+
+        <div class="sched-row">
+          <div class="sched-dot-col"><div class="sched-dot"></div></div>
+          <div class="sched-row-time">08:30</div>
+          <div class="sched-row-body">
+            <div class="sched-row-name">Émilie Bernard</div>
+            <div class="sched-row-motif">Consultation</div>
+          </div>
+          <div class="sched-row-actions"><button class="btn">Démarrer</button><span class="row-menu">⋮</span></div>
+        </div>
+
+        <div class="sched-row" style="background:#f9fbff">
+          <div class="sched-dot-col"><div class="sched-dot g"></div></div>
+          <div class="sched-row-time">10:30</div>
+          <div class="sched-row-body">
+            <div class="sched-row-name">Michel Rousseau</div>
+            <div class="status-pill g"><span class="d"></span>Nouveau résultat</div>
+            <div class="sched-row-motif">Suivi diabète</div>
+            <div class="sched-row-detail">HbA1c 8,1 % — en hausse · Discuter ajustement traitement</div>
+          </div>
+          <div class="sched-row-actions"><button class="btn btn-primary" onclick="openPatient()">Démarrer</button><span class="row-menu">⋮</span></div>
+        </div>
+
+        <div class="sched-row">
+          <div class="sched-dot-col"><div class="sched-dot b"></div></div>
+          <div class="sched-row-time">11:15</div>
+          <div class="sched-row-body">
+            <div class="sched-row-name">Sophie Martin</div>
+            <div class="status-pill b"><span class="d"></span>Courrier reçu</div>
+            <div class="sched-row-motif">Consultation</div>
+            <div class="sched-row-detail">Avis cardiologie à lire</div>
+          </div>
+          <div class="sched-row-actions"><button class="btn">Démarrer</button><span class="row-menu">⋮</span></div>
+        </div>
+
+        <div class="sched-row">
+          <div class="sched-dot-col"><div class="sched-dot"></div></div>
+          <div class="sched-row-time">12:00</div>
+          <div class="sched-row-body">
+            <div class="sched-row-name">Thomas Leroy</div>
+            <div class="sched-row-motif">Suivi HTA</div>
+          </div>
+          <div class="sched-row-actions"><button class="btn">Démarrer</button><span class="row-menu">⋮</span></div>
+        </div>
+
+        <div class="pause-row">13:00 — 14:00 · Pause</div>
+
+        <div class="sched-row">
+          <div class="sched-dot-col"><div class="sched-dot o"></div></div>
+          <div class="sched-row-time">14:00</div>
+          <div class="sched-row-body">
+            <div class="sched-row-name">Jean Morel</div>
+            <div class="status-pill o"><span class="d"></span>À revoir</div>
+            <div class="sched-row-motif">Consultation</div>
+            <div class="sched-row-detail">Vous commencez la mémoire de ce patient</div>
+          </div>
+          <div class="sched-row-actions"><button class="btn">Démarrer</button><span class="row-menu">⋮</span></div>
+        </div>
+
+        <div class="sched-row">
+          <div class="sched-dot-col"><div class="sched-dot"></div></div>
+          <div class="sched-row-time">15:30</div>
+          <div class="sched-row-body">
+            <div class="sched-row-name">Claire Dubois</div>
+            <div class="sched-row-motif">Consultation</div>
+          </div>
+          <div class="sched-row-actions"><button class="btn">Démarrer</button><span class="row-menu">⋮</span></div>
+        </div>
+
+        <div class="sched-row">
+          <div class="sched-dot-col"><div class="sched-dot"></div></div>
+          <div class="sched-row-time">16:15</div>
+          <div class="sched-row-body">
+            <div class="sched-row-name">Lucas Petit</div>
+            <div class="sched-row-motif">Suivi</div>
+          </div>
+          <div class="sched-row-actions"><button class="btn">Démarrer</button><span class="row-menu">⋮</span></div>
+        </div>
+
+        <div style="padding:12px 16px"><button class="btn-link">Voir plus de rendez-vous ↓</button></div>
+      </div>
+
+      <div class="card">
+        <div class="attn-header">
+          <span>🔔</span><span class="card-header-title">À votre attention · 2 éléments</span>
+          <button class="btn-link">Voir tous (2) →</button>
+        </div>
+        <div class="attn-grid">
+          <div class="attn-item">
+            <div class="attn-icon">📄</div>
+            <div>
+              <b style="font-size:13px">Sophie Martin</b>
+              <div class="muted" style="font-size:12px">Nouveau résultat biologique</div>
+              <div class="muted" style="font-size:11px">Il y a 2 heures</div>
             </div>
-            <div class="schedule-item">
-              <div class="schedule-time">11:15</div>
-              <div class="schedule-body">
-                <div class="schedule-name">Sophie Martin</div>
-                <div class="schedule-tags"><span class="schedule-reason reason-suivi">Consultation</span></div>
-                <div class="schedule-mini-context">Suivi hypothyroïdie · TSH dans la cible depuis mars</div>
-              </div>
-              <div class="schedule-right"><div class="schedule-age">41 ans</div></div>
-            </div>
-            <div class="schedule-item">
-              <div class="schedule-time">14:00</div>
-              <div class="schedule-body">
-                <div class="schedule-name">Jean Morel</div>
-                <div class="schedule-tags"><span class="schedule-reason reason-premier">Premier contact</span></div>
-                <div class="schedule-mini-context">Aucun historique clinique disponible · Vous commencez la mémoire de ce patient</div>
-              </div>
-              <div class="schedule-right"><div class="schedule-age">36 ans</div></div>
+          </div>
+          <div class="attn-item">
+            <div class="attn-icon">✉️</div>
+            <div>
+              <b style="font-size:13px">Jean Morel</b>
+              <div class="muted" style="font-size:12px">Courrier reçu</div>
+              <div class="muted" style="font-size:11px">Hier</div>
             </div>
           </div>
         </div>
-        <div class="card">
-          <!--
-            Items reliés à des entités nommées, pas des compteurs abstraits — corrige OBS-M2-011
-            (le kiné, session 3, ne savait pas si ce bloc était lié aux patients déjà listés dans le
-            planning). Chaque item apporte une information qui n'est PAS déjà visible dans la ligne du
-            planning correspondante, pour éviter la duplication trouvée dans l'exploration V2.1
-            (Marc Leroy répété deux fois avec le même texte).
-          -->
-          <div class="card-header"><span>🔔</span><span class="card-header-title">À votre attention</span></div>
-          <div class="card-body">
-            <div class="list-row"><div><b>Sophie Martin</b><br><span class="muted">Nouveau résultat de bilan disponible</span></div></div>
-            <div class="list-row"><div><b>Jean Morel</b><br><span class="muted">Courrier de confrère reçu avant la consultation</span></div></div>
-          </div>
+      </div>
+
+      <div class="dash-footer">
+        <div><span class="brand">MedLink</span> — Une pratique plus sereine, ensemble.</div>
+        <div class="links">
+          <span>Aide</span><span>Confidentialité</span><span>Conditions</span>
+          <span><span class="status-dot"></span>Système opérationnel</span>
         </div>
       </div>
     </div>
@@ -366,7 +509,7 @@
   </div>
 </section>
 
-<!-- ═══ WS-002 — PATIENT CONTEXT ═══ -->
+<!-- ═══ WS-002 — PATIENT CONTEXT (inchangé depuis v2) ═══ -->
 <!--
   Lecture A (validée par le Product Owner, 2026-08-13) : la sidebar ci-dessous reprend la navigation
   "dossier" de probe-dossier-v1.html, mais aucun de ses items ne change le contenu de cet écran.
@@ -457,7 +600,7 @@
   </div>
 </section>
 
-<!-- ═══ WS-003 — CONSULTATION ═══ -->
+<!-- ═══ WS-003 — CONSULTATION (inchangé depuis v2) ═══ -->
 <section id="ws3" class="page hidden">
   <div class="breadcrumb">Mon espace → Michel Rousseau → Consultation</div>
   <div class="card">
@@ -506,7 +649,7 @@
   <button class="btn btn-primary" onclick="closeConsultation()">Clôturer</button>
 </div>
 
-<!-- ═══ CARE RECORD ═══ -->
+<!-- ═══ CARE RECORD (inchangé depuis v2) ═══ -->
 <section id="record" class="page hidden">
   <div class="breadcrumb" id="record-crumb">Mon espace → Michel Rousseau → Care Record</div>
   <div class="patient-banner" style="border:1px solid var(--border);border-radius:var(--radius);margin-bottom:16px">
@@ -614,7 +757,7 @@
   <div style="margin-top:20px"><button class="btn btn-primary" id="record-back" onclick="show(recordOrigin)">← Retour</button></div>
 </section>
 
-<!-- ═══ CLÔTURE ═══ -->
+<!-- ═══ CLÔTURE (inchangé depuis v2) ═══ -->
 <section id="closed" class="page hidden">
   <div class="card closed-screen">
     <h1 style="font-size:22px;margin-bottom:8px">Consultation clôturée</h1>
@@ -649,6 +792,15 @@ function setTopbarBack(cfg) {
   }
 }
 
+// v3 : bascule les éléments de topbar spécifiques au Dashboard (recherche, cloche/aide, bloc
+// utilisateur avec spécialité) vs la vue simple utilisée sur les autres écrans (inchangée depuis v2).
+function updateTopbarMode(id) {
+  const isDash = (id === 'dash');
+  document.getElementById('topbar-search').classList.toggle('hidden', !isDash);
+  document.getElementById('topbar-simple').classList.toggle('hidden', isDash);
+  document.getElementById('topbar-dash-right').classList.toggle('hidden', !isDash);
+}
+
 function show(id) {
   ['dash','patient','patient-banner','patient-body','ws3','ws3-footer','record','closed']
     .forEach(x => document.getElementById(x).classList.add('hidden'));
@@ -665,6 +817,7 @@ function show(id) {
     document.getElementById('resume-banner').classList.toggle('hidden', !consultationPaused);
   }
 
+  updateTopbarMode(id);
   const cfg = titles[id].back;
   setTopbarBack(cfg);
 }

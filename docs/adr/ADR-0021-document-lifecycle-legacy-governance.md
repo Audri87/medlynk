@@ -159,7 +159,7 @@ modification : elle ne dépend d'aucun document nommé, seulement de la nature d
 | ADR-0016 — Status of Experimental Concepts | Complémentaire — ADR-0016 statue sur les concepts, cet ADR sur les documents qui les portent |
 | ADR-0017 — Freeze Semantics | Base réutilisée sans modification pour `Accepted`/`Experimental`/`Frozen` ; cet ADR étend l'échelle avec `Superseded`, `Deprecated`, `Historical`, `Legacy`, `Unknown` |
 | M2-AR-001 | Origine directe — chaque état défini ici répond à une catégorie observée par cet audit |
-| AR-001, Finding-005 | `ADR-0020` reste réservé pour son objet d'origine (réduction ou conservation du mandat WS-005) — non affecté par cet ADR |
+| AR-001, Finding-005 | `ADR-0020` (Accepted, 2026-10-05) a depuis tranché son objet d'origine (mandat WS-005 réduit à Transmission, Avis/Délégation en hypothèses) — non affecté par cet ADR |
 
 ---
 
@@ -168,3 +168,4 @@ modification : elle ne dépend d'aucun document nommé, seulement de la nature d
 | Date | Version | Nature |
 |---|---|---|
 | 2026-08-06 | 1.0 | Création — politique de cycle de vie documentaire, en réponse à M2-AR-001. Aucune réconciliation documentaire effectuée. |
+| 2026-10-05 | 1.1 | Correction mineure — référence à `ADR-0020` mise à jour (Accepted, plus réservé), suite à AR-001 Finding-002 |

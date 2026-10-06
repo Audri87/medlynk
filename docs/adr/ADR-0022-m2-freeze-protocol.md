@@ -1,6 +1,6 @@
 # ADR-0022 — M2 Freeze Protocol (Validation à trois Workspaces)
 
-**Statut** : Accepted
+**Statut** : Accepted (v1.1 — périmètre amendé le 2026-09-08, voir §2 et Historique)
 **Date** : 2026-08-06
 **Répond à** : discussion de session sur la méthode M2 (Sprint 1, WS-002)
 **Nature** : Applique à M2 le même protocole déjà utilisé pour Cognitive Responsibility
@@ -44,9 +44,22 @@ de validation parallèle.
 
 ### 2. Périmètre du gel
 
-Le gel porte sur **WS-002, WS-004, WS-005** — les trois seuls Workspaces réellement construits sous
+Le gel porte sur **WS-002, WS-005, WS-006** — les trois seuls Workspaces réellement construits sous
 M2. **WS-003 est explicitement exclu** : Gold Standard, achevé avant que M2 n'existe comme cadre ; le
 tester ne dirait rien de la robustesse de M2.
+
+> **Amendement 2026-09-08 ([ADR-0024](ADR-0024-ws004-nature-et-proof-set-m2.md), Option A adoptée).**
+> WS-004 a été retiré de ce périmètre, remplacé par WS-006. Raison : audit falsificateur
+> ([OBS-M2-013](../product/M2-JOURNAL-observations.md)) — WS-004 ne satisfait pas la définition
+> normative de Workspace ([WSP-001](../workspace/WSP-001-workspace.md), *"assemblée pour un Actor"*) ;
+> aucune responsabilité Actor-facing distincte de WS-003 n'a été démontrée. **WS-006 n'est pas un
+> remplacement fonctionnel de WS-004** — les deux ne portent pas la même responsabilité. WS-004 est
+> retiré parce qu'il ne satisfait pas actuellement le critère Workspace ; WS-006 est inclus parce qu'il
+> le satisfait et constitue un véritable objet Actor-facing à tester. Cette substitution ne constitue
+> pas une résolution générale de la classification des objets du système — la question plus large
+> (taxonomie Workspace / Research Workspace / Application Service interne, critère de vérification
+> avant admission dans un proof set) reste un chantier de gouvernance distinct, délibérément non traité
+> ici (Option B d'`ADR-0024`, différée).
 
 ### 3. Règle du gel
 
@@ -77,7 +90,8 @@ revue de M2 qui suit se fonde sur le contenu du Journal — pas sur une impressi
 difficulté déjà identifiée (bloc Nouveautés non ancré, `OQ-P-001`, granularité widget non tranchée)
 devient une entrée de journal, pas une révision immédiate de M2.
 
-**Pour WS-004 et WS-005** — Construits sous ce protocole dès leur lancement.
+**Pour WS-005 et WS-006** — Construits sous ce protocole dès leur lancement. (WS-006 remplace WS-004
+dans le périmètre depuis le 2026-09-08 — voir amendement §2.)
 
 **Pour WS-003** — Aucun effet. Reste Gold Standard, hors périmètre de ce gel.
 
@@ -104,3 +118,4 @@ révision non tracée.
 | Date | Version | Nature |
 |---|---|---|
 | 2026-08-06 | 1.0 | Création — gel de M2 pour la durée de WS-002/004/005, instantané intégré, journal ouvert |
+| 2026-09-08 | 1.1 | Amendement (ADR-0024, Option A) — WS-004 retiré du périmètre §2, remplacé par WS-006. WS-004 ne satisfaisait pas la définition normative de Workspace (WSP-001), confirmé par audit falsificateur (OBS-M2-013). WS-006 explicitement non présenté comme un remplacement fonctionnel — inclus parce qu'il satisfait le critère Workspace, pas parce qu'il porterait la responsabilité de WS-004. Question de gouvernance plus large (taxonomie des objets, critère de vérification préalable) volontairement différée — Option B d'ADR-0024, chantier séparé |

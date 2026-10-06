@@ -2,7 +2,7 @@
 
 **Status**: Accepted
 
-**Version**: 1.0
+**Version**: 1.1 (2026-10-06 — H-PND-001 added)
 
 **Date**: 2026-07-13
 
@@ -562,6 +562,62 @@ UL-001
 Planned Resolution
 
 Future field validation. Outcome determines whether a new Domain concept is needed.
+
+---
+
+## H-PND-001 — Source of Truth for Practitioner-Created Pending Actions
+
+Status
+
+Open
+
+Category
+
+Domain Boundary
+
+Source
+
+Product decision of 2026-10-06 — « À traiter » as the single collection of actions remaining for the Practitioner (product/workspaces/A-TRAITER-implementation.md). Recorded here as an open Domain question only; no Domain concept is created by this entry.
+
+Problem
+
+Most pending actions are derivable from facts that already exist in their owning Platform: a received result not yet acknowledged, a Draft not yet validated, an open Clinical Activity, a transmission not yet read. Displaying them is a Projection (assembled through the existing WorkItemProvider port, ADR-0006) and requires no new Domain concept.
+
+Two kinds of pending actions are not derivable from any existing fact:
+
+- an action recorded by the Practitioner at the moment of an interruption (e.g. a colleague's request to call back about another patient);
+- a decision taken by the Practitioner when reviewing remaining work (keep for tomorrow, mark as done, discard).
+
+Business Events are the source of truth and Projections are disposable. These items therefore require a write model and an owner. The question is which one:
+
+- outside the Clinical Domain by design (personal work organisation);
+- a Clinical concept (related to H-INT-001 — Interrupted Clinical Activity);
+- a Collaboration concept (related to H-VRB-001 — a colleague's verbal request is a verbal transmission);
+- or another Platform.
+
+Constraint: « À traiter », « tâche » and « action à faire » are Product vocabulary (GOV-000 §1ter-a). They shall not become an Aggregate, an entity or a table name by default.
+
+Current Impact
+
+The read side of « À traiter » can be specified. Its write side for practitioner-created items and closure decisions cannot be implemented as product code until this Hotspot is resolved.
+
+Affected Documents
+
+CAL-001
+
+DE-AGGREGATE-MAP-V1
+
+UL-001
+
+ADR-0006
+
+Related Hotspots
+
+H-INT-001, H-VRB-001, H-ES-001
+
+Planned Resolution
+
+Future Event Storming, after the v8 practitioner round has tested HYP-003-005 (interruption capture) and HYP-006-000 / HYP-006-002 (end-of-day review). If practitioners do not use these features, the Hotspot may be Cancelled without Domain impact.
 
 ---
 

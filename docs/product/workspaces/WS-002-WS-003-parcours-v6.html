@@ -1,0 +1,1187 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MedLink — Parcours principal V6</title>
+<!--
+    Statut interne (non affiché au praticien) :
+    v6 = v5 inchangée (Dashboard, WS-002, WS-003, Mode Clôture, WS-004/005, Care Record, Pause/Recovery)
+    + une surface testable pour WS-006 ("Je termine"), suite à ADR-0024 (Option A) : WS-006 remplace
+    WS-004 dans le proof set M2 — pas comme remplacement fonctionnel, mais parce qu'il satisfait,
+    lui, le critère Workspace (Actor-facing) et n'avait encore aucun écran construit.
+
+    Mise à jour 2026-09-10 (modification directe de v6, pas un nouveau fichier — demande explicite) :
+    Mode Action ajouté à WS-003, suite à l'amendement WS-003 v2.8 (extension PP-013, décision
+    Founder-Driven, evidence ?, non testée). Ordonnance/Orientation/Examen/Courrier/RDV sont désormais
+    accessibles pendant la consultation (4ᵉ icône ▤ Agir en Mode Présence + entrée rail), pas seulement
+    en Mode Clôture. Une action réalisée en Mode Action reste visible comme « Déjà réalisé » en Mode
+    Présence et dans le récapitulatif de Mode Clôture, qui ne propose plus que ce qui reste à faire.
+
+    Mise à jour 2026-09-10 (suite, WS-003 v2.9) : OQ-W-013 résolue — Courrier et Orientation sont deux
+    sorties distinctes (décision Founder-Driven), pas un renommage l'une de l'autre. Mode Action et
+    Mode Clôture proposent désormais les deux séparément (5 items). OQ-W-014 (effet de Mode Action sur
+    le sens de "Rien à signaler") reste seule non tranchée — non simulé ici au-delà de ce que le
+    Blueprint tranche.
+
+    WS-006 n'a AUCUN Blueprint à ce jour (statut `Research Workspace`, GOV-000 §4). Ce qui suit est une
+    première matérialisation à partir de ce que le corpus contient déjà, pas une conception nouvelle :
+    - "Consultations encore ouvertes" — WS-003 §11 (rappel de fin de journée, propriété WS-006) +
+      ACT-F007-025 (fermeture des dossiers). Réutilise le vrai état `consultationPaused` du prototype,
+      pas une donnée statique — si rien n'est en pause, l'état vide s'affiche réellement.
+    - "À reporter à demain" — ACT-F009-033 (report des tâches non terminées).
+    - "Avant de partir" — ACT-F001-024→027 (vérification matériel, sauvegarde, tour du cabinet, sortie).
+      Contenu illustratif, pas encore confronté au terrain.
+
+    Chaque bloc est un candidat direct pour une des 4 questions déjà écrites, jamais posées
+    (CWRM-020-APX-M2-workspace-questionnaires §6) — voir la note HYPOTHÈSE en bas de l'écran WS-006.
+
+    Point de vigilance explicitement NON résolu ici, à ne pas trancher silencieusement : la frontière
+    WS-006 → WS-001 (le lendemain matin, est-ce que ce qui est reporté ici redevient visible dans "Mon
+    Espace" ?) reste ouverte (OBS-M2-005, mise à jour 2026-09-08). Cet écran ne préjuge d'aucun lien
+    automatique avec le Dashboard du lendemain — "Mon espace" et "Je termine" restent deux écrans
+    séparés, pas fusionnés, précisément pour ne pas reproduire la même confusion shell/Workspace déjà
+    signalée sur WS-001.
+
+    Reste de l'historique (v2→v5) : voir les fichiers précédents pour le détail de chaque décision.
+-->
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f4f5f7;
+    --surface: #ffffff;
+    --sidebar-bg: #1a2233;
+    --sidebar-text: #8fa3bf;
+    --sidebar-active-bg: #2d3f5c;
+    --accent: #2563eb;
+    --alert: #dc2626;
+    --alert-bg: #fef2f2;
+    --alert-border: #fecaca;
+    --warn: #d97706;
+    --warn-bg: #fffbeb;
+    --ok: #16a34a;
+    --ok-bg: #f0fdf4;
+    --text: #111827;
+    --text-muted: #6b7280;
+    --text-subtle: #9ca3af;
+    --border: #e5e7eb;
+    --radius: 8px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  /* ── Top bar ── */
+  .topbar {
+    background: var(--sidebar-bg);
+    padding: 0 20px;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .topbar-logo { font-weight: 700; font-size: 16px; color: #fff; letter-spacing: -0.3px; }
+  .topbar-logo span { color: #60a5fa; }
+  .topbar-sep { width: 1px; height: 20px; background: #2d3f5c; }
+  .topbar-back { color: #8fa3bf; font-size: 13px; cursor: pointer; background: none; border: none; font-family: inherit; }
+  .topbar-back:hover { color: #c9d8ed; }
+  .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 16px; }
+  .topbar-practitioner { font-size: 13px; color: #8fa3bf; }
+  .topbar-avatar {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: #2d3f5c; color: #60a5fa;
+    font-weight: 700; font-size: 12px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .topbar-search {
+    flex: 1; max-width: 460px; display: flex; align-items: center; gap: 8px;
+    background: rgba(255,255,255,0.07); border: 1px solid #2d3f5c; border-radius: 8px;
+    padding: 8px 12px; color: #8fa3bf; font-size: 13px;
+  }
+  .topbar-icon-btn {
+    position: relative; width: 34px; height: 34px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: #c9d8ed; font-size: 15px; cursor: default;
+  }
+  .topbar-icon-btn:hover { background: rgba(255,255,255,0.08); }
+  .topbar-icon-badge {
+    position: absolute; top: -2px; right: -2px; background: var(--alert); color: #fff;
+    font-size: 9px; font-weight: 700; border-radius: 10px; padding: 1px 4px; min-width: 14px; text-align: center;
+  }
+  .topbar-user { display: flex; align-items: center; gap: 10px; cursor: default; }
+  .topbar-user-info { line-height: 1.25; }
+  .topbar-user-name { font-size: 13px; color: #fff; font-weight: 600; }
+  .topbar-user-role { font-size: 11px; color: #8fa3bf; }
+  .topbar-chevron { color: #6b7f9c; font-size: 10px; }
+
+  /* ── Patient banner ── */
+  .patient-banner {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .patient-avatar {
+    width: 52px; height: 52px; border-radius: 50%;
+    background: #dbeafe; color: var(--accent);
+    font-weight: 700; font-size: 18px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .patient-info { flex: 1; }
+  .patient-name { font-size: 18px; font-weight: 700; }
+  .patient-meta { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+  .patient-tags { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+  .patient-tag {
+    font-size: 11px; font-weight: 500; padding: 2px 8px;
+    border-radius: 12px; border: 1px solid;
+  }
+  .tag-condition { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
+  .tag-alert     { background: var(--alert-bg); color: var(--alert); border-color: var(--alert-border); }
+  .tag-allergy   { background: #fff7ed; color: #c2410c; border-color: #fed7aa; }
+
+  .banner-stats { display: flex; gap: 24px; flex-shrink: 0; }
+  .banner-stat { text-align: center; }
+  .banner-stat-value { font-size: 20px; font-weight: 700; }
+  .banner-stat-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-subtle); }
+
+  .page { max-width: 1040px; margin: 0 auto; padding: 24px; }
+
+  /* ── Dashboard : layout avec sidebar (probe-dashboard-v2.html, repris tel quel) ── */
+  .layout { display: flex; align-items: flex-start; }
+  .sidebar {
+    width: 200px; flex-shrink: 0; background: var(--sidebar-bg);
+    padding: 16px 0; display: flex; flex-direction: column; gap: 2px;
+    min-height: calc(100vh - 52px);
+  }
+  .sidebar-section-label {
+    font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+    color: #4a5e7a; padding: 12px 16px 4px;
+  }
+  .sidebar-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 16px; color: var(--sidebar-text); cursor: pointer; font-size: 13px;
+  }
+  .sidebar-item:hover { background: rgba(255,255,255,0.05); color: #c9d8ed; }
+  .sidebar-item.active { background: var(--sidebar-active-bg); color: white; font-weight: 500; }
+  .sidebar-item .icon { font-size: 15px; opacity: 0.8; }
+  .sidebar-badge {
+    margin-left: auto; background: var(--alert); color: white;
+    font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 10px;
+  }
+  .sidebar-badge-warn {
+    margin-left: auto; background: var(--warn); color: white;
+    font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 10px;
+  }
+  .dash-main { flex: 1; padding: 24px; }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden;
+  }
+  .card + .card { margin-top: 12px; }
+  .card-header {
+    padding: 12px 16px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .card-header-title { font-weight: 600; font-size: 13px; }
+  .card-header-sub { font-size: 12px; color: var(--text-muted); margin-left: auto; }
+  .card-body { padding: 16px; }
+  .muted { color: var(--text-muted); }
+
+  .list-row {
+    border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 12px 14px; display: flex; justify-content: space-between; align-items: center;
+  }
+  .list-row + .list-row { margin-top: 8px; }
+
+  .btn {
+    padding: 9px 15px; border-radius: 6px;
+    font-size: 13px; font-weight: 500; cursor: pointer;
+    border: 1px solid var(--border); background: var(--surface); color: var(--text);
+    text-align: center; transition: opacity 0.15s; font-family: inherit;
+  }
+  .btn:hover { opacity: 0.8; }
+  .btn-primary { background: var(--accent); color: white; border-color: var(--accent); font-weight: 600; }
+  .btn-link { border: none; background: none; color: var(--accent); padding: 0; font-weight: 500; cursor: pointer; font: inherit; }
+
+  /* ── Dashboard : en-tête, continuité de travail, planning en lignes, "à votre attention", footer ── */
+  .tagline-pill {
+    background: var(--ok-bg); border: 1px solid #bbf7d0; border-radius: 10px;
+    padding: 12px 18px; font-size: 13px; color: #166534; font-style: italic;
+    display: flex; align-items: center; gap: 10px; max-width: 320px; flex-shrink: 0;
+  }
+  .section-eyebrow {
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--text-subtle); margin: 18px 0 8px;
+  }
+  .section-eyebrow:first-child { margin-top: 0; }
+
+  .continuity-header { padding: 12px 16px; border-bottom: 1px solid var(--border); }
+  .continuity-eyebrow { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--accent); }
+  .continuity-count { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+  .continuity-row { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--border); }
+  .continuity-row:last-child { border-bottom: none; }
+  .continuity-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); margin-top: 6px; flex-shrink: 0; }
+  .continuity-body { flex: 1; }
+  .continuity-title { font-weight: 600; font-size: 13px; }
+  .continuity-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+  .planning-header, .attn-header {
+    display: flex; align-items: center; gap: 10px; padding: 12px 16px;
+    border-bottom: 1px solid var(--border); flex-wrap: wrap;
+  }
+  .planning-header .card-header-title, .attn-header .card-header-title { margin-right: auto; }
+  .date-nav {
+    display: flex; align-items: center; gap: 10px; border: 1px solid var(--border);
+    border-radius: 6px; padding: 6px 12px; font-size: 13px;
+  }
+  .date-nav button { border: none; background: none; cursor: pointer; color: var(--text-muted); font-size: 13px; font-family: inherit; }
+
+  .sched-row { display: flex; align-items: flex-start; gap: 12px; border-bottom: 1px solid var(--border); padding: 12px 16px; }
+  .sched-row:last-child { border-bottom: none; }
+  .sched-dot-col { width: 8px; padding-top: 6px; flex-shrink: 0; }
+  .sched-dot { width: 8px; height: 8px; border-radius: 50%; background: #d1d5db; }
+  .sched-dot.g { background: var(--ok); }
+  .sched-dot.b { background: var(--accent); }
+  .sched-dot.o { background: var(--warn); }
+  .sched-row-time { width: 48px; flex-shrink: 0; font-size: 13px; font-weight: 600; color: var(--text-muted); }
+  .sched-row-body { flex: 1; }
+  .sched-row-name { font-weight: 600; font-size: 13px; }
+  .status-pill {
+    display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600;
+    padding: 3px 9px; border-radius: 12px; margin-top: 5px;
+  }
+  .status-pill .d { width: 6px; height: 6px; border-radius: 50%; }
+  .status-pill.g { background: var(--ok-bg); color: #166534; } .status-pill.g .d { background: var(--ok); }
+  .status-pill.b { background: #eff6ff; color: #1d4ed8; } .status-pill.b .d { background: var(--accent); }
+  .status-pill.o { background: #fff7ed; color: #9a3412; } .status-pill.o .d { background: var(--warn); }
+  .sched-row-motif { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+  .sched-row-detail { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .sched-row-actions { display: flex; align-items: center; gap: 10px; flex-shrink: 0; padding-top: 2px; }
+  .row-menu { color: var(--text-subtle); font-size: 14px; }
+  .pause-row { background: #f8fafc; padding: 10px 16px; font-size: 12px; color: var(--text-subtle); }
+
+  .attn-grid { display: flex; }
+  .attn-item { flex: 1; display: flex; gap: 10px; padding: 14px 16px; }
+  .attn-item + .attn-item { border-left: 1px solid var(--border); }
+  .attn-icon {
+    width: 32px; height: 32px; border-radius: 8px; background: #eff6ff; color: var(--accent);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 14px;
+  }
+
+  .dash-footer {
+    margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 12px; color: var(--text-subtle); flex-wrap: wrap; gap: 10px;
+  }
+  .dash-footer .brand { font-weight: 700; color: var(--text-muted); }
+  .dash-footer .links { display: flex; gap: 16px; align-items: center; }
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); display: inline-block; margin-right: 4px; }
+
+  /* ── WS-002 blocks ── */
+  .ws2-blocks { display: grid; gap: 10px; margin-top: 16px; }
+  .ws2-block { border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; background: var(--surface); }
+  .ws2-block-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-subtle); margin-bottom: 4px; }
+  .ws2-block-body { font-size: 14px; }
+  .ws2-block.collapsed { opacity: 0.7; }
+
+  .cta-row {
+    margin-top: 22px; border-top: 1px solid var(--border); padding-top: 20px;
+    display: flex; justify-content: space-between; align-items: center; gap: 20px;
+  }
+  .cta-label { font-weight: 600; font-size: 14px; }
+  .cta-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .dossier-link-row { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
+
+  /* ── WS-003 modes + rail au survol (HYPOTHÈSE, tension PP-009/PP-010 signalée) ── */
+  .mode-shell { min-height: 480px; display: grid; place-items: center; text-align: center; }
+  .mode-hidden { display: none; }
+  .mode-title { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+  .mode-actions { display: flex; gap: 16px; justify-content: center; margin-top: 32px; }
+  .mode-action {
+    width: 96px; height: 88px; border: 1px solid var(--border); background: var(--surface);
+    border-radius: 12px; font-size: 24px; cursor: pointer; font-family: inherit;
+  }
+  .mode-action:hover { border-color: var(--accent); }
+  .mode-action small { display: block; font-size: 11px; color: var(--text-muted); margin-top: 6px; }
+  .presence-done { margin-top: 22px; display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+  .mode-box { max-width: 640px; width: 100%; text-align: left; }
+  textarea {
+    width: 100%; min-height: 130px; padding: 12px; border: 1px solid var(--border);
+    border-radius: 6px; font: inherit; resize: vertical;
+  }
+  .consultation-footer {
+    border-top: 1px solid var(--border); padding: 14px 24px;
+    display: flex; justify-content: space-between; align-items: center;
+    max-width: 1040px; margin: 0 auto;
+  }
+  .consult-rail {
+    position: fixed; left: -184px; top: 52px; width: 200px; height: calc(100vh - 52px);
+    background: var(--sidebar-bg); padding: 16px 0; z-index: 20;
+    transition: left .18s ease; box-shadow: 2px 0 8px rgba(0,0,0,.12);
+  }
+  .consult-rail::after {
+    content: '›'; position: absolute; right: -16px; top: 50%; width: 16px; height: 44px;
+    background: var(--sidebar-bg); color: #8fa3bf; display: grid; place-items: center;
+    border-radius: 0 5px 5px 0; transform: translateY(-50%);
+  }
+  .consult-rail:hover { left: 0; }
+
+  /* ── Mode Clôture (HYPOTHÈSE — À TESTER) ── */
+  .closure-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; gap: 16px; flex-wrap: wrap; }
+  .closure-pill { font-size: 11px; padding: 4px 10px; border-radius: 12px; background: var(--ok-bg); color: #166534; border: 1px solid #bbf7d0; }
+  .closure-grid { display: grid; grid-template-columns: 1.2fr .8fr; gap: 16px; }
+  .closure-grid textarea { min-height: 200px; margin-top: 10px; }
+  .output-list { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+  .output-item {
+    display: grid; grid-template-columns: 30px 1fr 24px; align-items: center; text-align: left;
+    width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+    padding: 10px 12px; cursor: pointer; color: var(--text); font: inherit;
+  }
+  .output-item:hover { border-color: #cbd5e1; }
+  .output-item.selected { border-color: #86efac; background: var(--ok-bg); }
+  .output-icon { font-size: 17px; text-align: center; }
+  .output-item b { display: block; font-size: 13px; }
+  .output-item small { display: block; color: var(--text-muted); font-size: 11px; margin-top: 1px; }
+  .output-check { font-size: 16px; text-align: center; color: var(--text-subtle); }
+  .output-item.selected .output-check { color: var(--ok); font-weight: 700; }
+  .closure-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 18px; flex-wrap: wrap; gap: 10px; }
+  .closure-footer .right { display: flex; gap: 8px; }
+  .hyp-note {
+    margin-top: 16px; padding: 10px 12px; border: 1px dashed #cbd5e1; border-radius: 8px;
+    color: var(--text-muted); font-size: 11px; background: #fafafa;
+  }
+  .hyp-note b { color: var(--warn); }
+  @media (max-width: 760px) { .closure-grid { grid-template-columns: 1fr; } }
+
+  /* ── WS-004 / WS-005 (contenu gardé tel quel — voir commentaire en tête de fichier v5) ── */
+  .ws-item { padding: 14px 16px; border-bottom: 1px solid var(--border); }
+  .ws-item:last-child { border-bottom: none; }
+  .ws-pill { font-size: 10px; padding: 2px 7px; border-radius: 10px; background: #eff6ff; color: #1d4ed8; }
+
+  /* ── WS-006 — Je termine (nouveau en v6, HYPOTHÈSE — À TESTER, aucun Blueprint) ── */
+  .checklist label { display: flex; align-items: center; gap: 9px; font-size: 13px; padding: 7px 0; }
+  .checklist input { width: 16px; height: 16px; }
+
+  /* ── Care Record ── */
+  .record-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
+  .record-card { border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; background: var(--surface); transition: box-shadow 0.2s, border-color 0.2s; }
+  .record-card.target { border-color: var(--accent); box-shadow: 0 0 0 2px #dbeafe; }
+  .rc-list { margin-top: 10px; }
+  .rc-item { display: flex; gap: 8px; font-size: 12px; padding: 5px 0; border-top: 1px solid #f0f2f4; }
+  .rc-item:first-child { border-top: none; }
+  .rc-item-date { color: var(--text-subtle); flex-shrink: 0; width: 62px; }
+  .rc-item-label { color: var(--text); }
+  .rc-more { font-size: 11px; color: var(--text-subtle); margin-top: 6px; }
+  .record-card-icon { font-size: 18px; margin-bottom: 6px; }
+
+  .hidden { display: none; }
+  .breadcrumb { font-size: 12px; color: var(--text-subtle); margin-bottom: 16px; }
+
+  .closed-screen { text-align: center; padding: 90px 20px; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-logo">Med<span>Link</span></div>
+  <div class="topbar-sep" id="topbar-sep"></div>
+  <button class="topbar-back hidden" id="topbar-back"></button>
+  <div class="topbar-search hidden" id="topbar-search">🔍 <span>Rechercher un patient (nom, date de naissance…)</span></div>
+  <div class="topbar-right">
+    <div id="topbar-simple" class="hidden" style="display:flex;align-items:center;gap:16px">
+      <div class="topbar-practitioner">Dr. A. Durand</div>
+      <div class="topbar-avatar">AD</div>
+    </div>
+    <div id="topbar-dash-right" class="hidden" style="display:flex;align-items:center;gap:4px">
+      <div class="topbar-icon-btn">🔔<span class="topbar-icon-badge">3</span></div>
+      <div class="topbar-icon-btn">❓</div>
+      <div class="topbar-user">
+        <div class="topbar-avatar">AD</div>
+        <div class="topbar-user-info">
+          <div class="topbar-user-name">Dr Audrey Durand</div>
+          <div class="topbar-user-role">Médecine générale</div>
+        </div>
+        <span class="topbar-chevron">▾</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ DASHBOARD (inchangé depuis v5, sauf ajout d'un item de navigation vers WS-006) ═══ -->
+<section id="dash" class="page" style="max-width:none;padding:0">
+  <div class="layout">
+
+    <nav class="sidebar">
+      <div style="flex:1">
+        <div class="sidebar-section-label">Navigation</div>
+        <div class="sidebar-item active"><span class="icon">🏠</span> Mon espace</div>
+        <div class="sidebar-item"><span class="icon">📅</span> Planning</div>
+        <div class="sidebar-item"><span class="icon">🔔</span> Nouveautés<span class="sidebar-badge">3</span></div>
+        <div class="sidebar-item"><span class="icon">💬</span> Messages</div>
+        <!-- Seul nouvel item câblé (2026-09-08) — WS-006 dans le proof set M2 (ADR-0024) -->
+        <div class="sidebar-item" onclick="show('ws6')"><span class="icon">🌙</span> Terminer ma journée</div>
+        <div class="sidebar-section-label">Patients</div>
+        <div class="sidebar-item"><span class="icon">🔍</span> Rechercher</div>
+        <div class="sidebar-item"><span class="icon">📝</span> À traiter<span class="sidebar-badge-warn">5</span></div>
+        <div class="sidebar-section-label">Travail</div>
+        <div class="sidebar-item"><span class="icon">📄</span> Ordonnances</div>
+        <div class="sidebar-item"><span class="icon">📬</span> Résultats</div>
+        <div class="sidebar-item"><span class="icon">📋</span> Consultations</div>
+        <div class="sidebar-item"><span class="icon">✉️</span> Courriers</div>
+      </div>
+      <div class="sidebar-item" style="margin-top:auto"><span class="icon">⚙️</span> Paramètres</div>
+    </nav>
+
+    <div class="dash-main">
+      <div class="breadcrumb">Mon espace</div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:20px;margin-bottom:20px;flex-wrap:wrap">
+        <div>
+          <h1 style="font-size:22px;margin-bottom:4px">Bonjour, Dr Audrey Durand</h1>
+          <p class="muted">Mardi 8 septembre 2025</p>
+        </div>
+        <div class="tagline-pill">🌿 <span>« Prendre soin de vos patients, simplement. »</span></div>
+      </div>
+
+      <div id="continuity-card" class="card hidden">
+        <div class="continuity-header">
+          <div class="continuity-eyebrow">Continuité de travail</div>
+          <div class="continuity-count">1 élément est à reprendre</div>
+        </div>
+        <div class="continuity-row">
+          <div class="continuity-dot"></div>
+          <div class="continuity-body">
+            <div class="continuity-title">Consultation interrompue</div>
+            <div class="continuity-sub">Michel Rousseau · reprendre là où vous vous êtes arrêté</div>
+          </div>
+          <button class="btn btn-primary" onclick="resumeConsultation()">Reprendre</button>
+        </div>
+      </div>
+
+      <div class="section-eyebrow">Ma journée</div>
+      <div class="card">
+        <div class="planning-header">
+          <span>🗓️</span><span class="card-header-title">Planning du jour</span>
+          <div class="date-nav"><button>‹</button><span>Mardi 8 septembre 2025</span><button>›</button></div>
+          <button class="btn btn-primary">+ Ajouter un rendez-vous</button>
+        </div>
+
+        <div class="sched-row">
+          <div class="sched-dot-col"><div class="sched-dot"></div></div>
+          <div class="sched-row-time">08:30</div>
+          <div class="sched-row-body">
+            <div class="sched-row-name">Émilie Bernard</div>
+            <div class="sched-row-motif">Consultation</div>
+          </div>
+          <div class="sched-row-actions"><button class="btn">Démarrer</button><span class="row-menu">⋮</span></div>
+        </div>
+
+        <div class="sched-row" style="background:#f9fbff">
+          <div class="sched-dot-col"><div class="sched-dot g"></div></div>
+          <div class="sched-row-time">10:30</div>
+          <div class="sched-row-body">
+            <div class="sched-row-name">Michel Rousseau</div>
+            <div class="status-pill g"><span class="d"></span>Nouveau résultat</div>
+            <div class="sched-row-motif">Suivi diabète</div>
+            <div class="sched-row-detail">HbA1c 8,1 % — en hausse · Discuter ajustement traitement</div>
+          </div>
+          <div class="sched-row-actions"><button class="btn btn-primary" onclick="openPatient()">Démarrer</button><span class="row-menu">⋮</span></div>
+        </div>
+
+        <div class="sched-row">
+          <div class="sched-dot-col"><div class="sched-dot b"></div></div>
+          <div class="sched-row-time">11:15</div>
+          <div class="sched-row-body">
+            <div class="sched-row-name">Sophie Martin</div>
+            <div class="status-pill b"><span class="d"></span>Courrier reçu</div>
+            <div class="sched-row-motif">Consultation</div>
+            <div class="sched-row-detail">Avis cardiologie à lire</div>
+          </div>
+          <div class="sched-row-actions"><button class="btn">Démarrer</button><span class="row-menu">⋮</span></div>
+        </div>
+
+        <div class="sched-row">
+          <div class="sched-dot-col"><div class="sched-dot"></div></div>
+          <div class="sched-row-time">12:00</div>
+          <div class="sched-row-body">
+            <div class="sched-row-name">Thomas Leroy</div>
+            <div class="sched-row-motif">Suivi HTA</div>
+          </div>
+          <div class="sched-row-actions"><button class="btn">Démarrer</button><span class="row-menu">⋮</span></div>
+        </div>
+
+        <div class="pause-row">13:00 — 14:00 · Pause</div>
+
+        <div class="sched-row">
+          <div class="sched-dot-col"><div class="sched-dot o"></div></div>
+          <div class="sched-row-time">14:00</div>
+          <div class="sched-row-body">
+            <div class="sched-row-name">Jean Morel</div>
+            <div class="status-pill o"><span class="d"></span>À revoir</div>
+            <div class="sched-row-motif">Consultation</div>
+            <div class="sched-row-detail">Vous commencez la mémoire de ce patient</div>
+          </div>
+          <div class="sched-row-actions"><button class="btn">Démarrer</button><span class="row-menu">⋮</span></div>
+        </div>
+
+        <div class="sched-row">
+          <div class="sched-dot-col"><div class="sched-dot"></div></div>
+          <div class="sched-row-time">15:30</div>
+          <div class="sched-row-body">
+            <div class="sched-row-name">Claire Dubois</div>
+            <div class="sched-row-motif">Consultation</div>
+          </div>
+          <div class="sched-row-actions"><button class="btn">Démarrer</button><span class="row-menu">⋮</span></div>
+        </div>
+
+        <div class="sched-row">
+          <div class="sched-dot-col"><div class="sched-dot"></div></div>
+          <div class="sched-row-time">16:15</div>
+          <div class="sched-row-body">
+            <div class="sched-row-name">Lucas Petit</div>
+            <div class="sched-row-motif">Suivi</div>
+          </div>
+          <div class="sched-row-actions"><button class="btn">Démarrer</button><span class="row-menu">⋮</span></div>
+        </div>
+
+        <div style="padding:12px 16px"><button class="btn-link">Voir plus de rendez-vous ↓</button></div>
+      </div>
+
+      <div class="card">
+        <div class="attn-header">
+          <span>🔔</span><span class="card-header-title">À votre attention · 1 élément</span>
+          <button class="btn-link">Voir tout →</button>
+        </div>
+        <div class="attn-grid">
+          <div class="attn-item">
+            <div class="attn-icon">✉️</div>
+            <div>
+              <b style="font-size:13px">Jean Morel</b>
+              <div class="muted" style="font-size:12px">Courrier reçu</div>
+              <div class="muted" style="font-size:11px">Hier</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="dash-footer">
+        <div><span class="brand">MedLink</span> — Une pratique plus sereine, ensemble.</div>
+        <div class="links">
+          <span>Aide</span><span>Confidentialité</span><span>Conditions</span>
+          <span><span class="status-dot"></span>Système opérationnel</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══ WS-002 — PATIENT CONTEXT ═══ -->
+<div id="patient-banner" class="patient-banner hidden">
+  <div class="patient-avatar">MR</div>
+  <div class="patient-info">
+    <div class="patient-name">Michel Rousseau</div>
+    <div class="patient-meta">58 ans · né le 14/03/1968 · Médecin traitant : Dr. Durand · Suivi depuis 2014 · Consultation prévue 10:30</div>
+    <div class="patient-tags">
+      <span class="patient-tag tag-allergy">Allergie pénicilline</span>
+      <span class="patient-tag tag-condition">Diabète type 2</span>
+      <span class="patient-tag tag-condition">HTA</span>
+    </div>
+  </div>
+  <div class="banner-stats">
+    <div class="banner-stat"><div class="banner-stat-value" style="color:var(--accent)">7</div><div class="banner-stat-label">Traitements</div></div>
+    <div class="banner-stat"><div class="banner-stat-value" style="color:var(--text-muted)">24</div><div class="banner-stat-label">Consultations</div></div>
+    <div class="banner-stat"><div class="banner-stat-value" style="color:var(--warn)">2</div><div class="banner-stat-label">Alertes</div></div>
+  </div>
+</div>
+<section id="patient" class="hidden" style="display:none"></section>
+<section id="patient-body" class="hidden" style="max-width:none;padding:0">
+  <div class="layout">
+
+    <nav class="sidebar">
+      <div class="sidebar-section-label">Dossier</div>
+      <div class="sidebar-item active"><span class="icon">📋</span> Résumé</div>
+      <div class="sidebar-item" onclick="openRecord('patient','historique')"><span class="icon">🕐</span> Historique</div>
+      <div class="sidebar-item" onclick="openRecord('patient','resultats')"><span class="icon">🧪</span> Résultats<span class="sidebar-badge">2</span></div>
+      <div class="sidebar-item" onclick="openRecord('patient','ordonnances')"><span class="icon">💊</span> Ordonnances</div>
+      <div class="sidebar-item" onclick="openRecord('patient','documents')"><span class="icon">📎</span> Documents</div>
+      <div class="sidebar-section-label">Histoire</div>
+      <div class="sidebar-item" onclick="openRecord('patient','antecedents')"><span class="icon">🏥</span> Antécédents</div>
+      <div class="sidebar-item" onclick="openRecord('patient','famille')"><span class="icon">👨‍👩‍👧</span> Famille</div>
+      <div class="sidebar-item" onclick="openRecord('patient','vaccins')"><span class="icon">💉</span> Vaccins</div>
+      <div class="sidebar-section-label">Mon travail</div>
+      <div class="sidebar-item" onclick="openRecord('patient','notes')"><span class="icon">📝</span> Mes notes</div>
+      <div class="sidebar-item" onclick="openRecord('patient','courriers')"><span class="icon">📬</span> Courriers</div>
+    </nav>
+
+    <div class="dash-main">
+      <div class="ws2-blocks">
+        <div class="ws2-block">
+          <div class="ws2-block-label">1 · Présence</div>
+          <div class="ws2-block-body">Patient connu · motif du jour : suivi trimestriel diabète.</div>
+        </div>
+        <div class="ws2-block">
+          <div class="ws2-block-label">2 · Continuité</div>
+          <div class="ws2-block-body">Dernière séance le 18 juin — HbA1c 8,1 %, discussion observance.</div>
+        </div>
+        <div class="ws2-block">
+          <div class="ws2-block-label">3 · Intention</div>
+          <div class="ws2-block-body">Objectif documenté : revoir si HbA1c &gt; 9 % → discuter insuline.</div>
+        </div>
+        <div class="ws2-block collapsed">
+          <div class="ws2-block-label">4 · Historique ▸</div>
+          <div class="ws2-block-body muted">Détails historiques masqués par défaut.</div>
+        </div>
+      </div>
+      <div class="cta-row">
+        <div>
+          <div class="cta-label">Prêt à commencer ?</div>
+          <div class="cta-sub">La consultation ne s'ouvre qu'après votre action.</div>
+        </div>
+        <button class="btn btn-primary" onclick="show('ws3')">Démarrer la consultation →</button>
+      </div>
+      <div class="dossier-link-row">
+        <button class="btn-link" onclick="openRecord('patient')">Consulter le dossier complet →</button>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══ WS-003 — CONSULTATION ═══ -->
+<section id="ws3" class="page hidden">
+  <aside class="consult-rail">
+    <div class="sidebar-section-label">Consultation</div>
+    <div class="sidebar-item active">● Présence</div>
+    <div class="sidebar-item" onclick="mode('capture')">✎ Note</div>
+    <div class="sidebar-section-label">Dossier</div>
+    <div class="sidebar-item" onclick="openRecord('ws3','historique')">🕐 Historique</div>
+    <div class="sidebar-item" onclick="openRecord('ws3','resultats')">🧪 Résultats</div>
+    <div class="sidebar-item" onclick="openRecord('ws3','ordonnances')">💊 Traitement</div>
+    <div class="sidebar-section-label">Actions</div>
+    <div class="sidebar-item" onclick="mode('action')">▤ Agir</div>
+    <div class="sidebar-item" onclick="mode('follow')">↗ Rappel</div>
+  </aside>
+  <div class="breadcrumb">Mon espace → Michel Rousseau → Consultation</div>
+  <div class="card">
+    <div class="card-body">
+
+      <div id="presence" class="mode-shell">
+        <div>
+          <div class="mode-title">Présence</div>
+          <p class="muted">Le logiciel reste silencieux pendant l'écoute.</p>
+          <div class="mode-actions">
+            <button class="mode-action" onclick="mode('capture')">⊞<small>Noter</small></button>
+            <button class="mode-action" onclick="openRecord('ws3')">◎<small>Dossier</small></button>
+            <button class="mode-action" onclick="mode('action')">▤<small>Agir</small></button>
+            <button class="mode-action" onclick="mode('follow')">→<small>Rappel</small></button>
+          </div>
+          <div id="presence-done" class="presence-done hidden"></div>
+        </div>
+      </div>
+
+      <div id="action" class="mode-shell mode-hidden">
+        <div class="mode-box">
+          <h2>Agir</h2>
+          <p class="muted" style="margin:6px 0 14px">Produire une action maintenant, sans attendre la fin de la consultation.</p>
+          <div class="output-list" id="action-list">
+            <button class="output-item" data-key="ordonnance" onclick="doAction(this)"><span class="output-icon">💊</span><span><b>Ordonnance</b><small>Prescrire un traitement</small></span><span class="output-check">+</span></button>
+            <button class="output-item" data-key="orientation" onclick="doAction(this)"><span class="output-icon">🧭</span><span><b>Orientation</b><small>Adresser à un confrère</small></span><span class="output-check">+</span></button>
+            <button class="output-item" data-key="examen" onclick="doAction(this)"><span class="output-icon">🔬</span><span><b>Examen</b><small>Demander un examen</small></span><span class="output-check">+</span></button>
+            <button class="output-item" data-key="courrier" onclick="doAction(this)"><span class="output-icon">✉️</span><span><b>Courrier</b><small>Préparer une correspondance</small></span><span class="output-check">+</span></button>
+            <button class="output-item" data-key="rdv" onclick="doAction(this)"><span class="output-icon">📅</span><span><b>Prochain rendez-vous</b><small>Prévoir la suite</small></span><span class="output-check">+</span></button>
+          </div>
+          <div style="margin-top:14px"><button class="btn btn-primary" onclick="mode('presence')">Retour à la consultation</button></div>
+          <div class="hyp-note"><b>HYPOTHÈSE — À TESTER</b> · Mode Action (WS-003 v2.9, amendement 2026-09-10, PP-013 étendu) — décision Founder-Driven, evidence ?, non testée. Fonctionne comme Mode Lookup (plein écran, retour explicite). Orientation et Courrier sont deux sorties distinctes (résolu OQ-W-013, 2026-09-10) — un praticien peut produire les deux séparément.</div>
+        </div>
+      </div>
+
+      <div id="capture" class="mode-shell mode-hidden">
+        <div class="mode-box">
+          <h2>Noter</h2>
+          <p class="muted" style="margin:6px 0 14px">Capture ponctuelle, puis retour à la présence.</p>
+          <textarea placeholder="Noter quelque chose…"></textarea>
+          <div style="margin-top:14px"><button class="btn btn-primary" onclick="mode('presence')">Retour</button></div>
+        </div>
+      </div>
+
+      <div id="follow" class="mode-shell mode-hidden">
+        <div>
+          <h2>Rappel</h2>
+          <p class="muted" style="margin:6px 0 14px">Marquer ce patient pour un suivi ultérieur — action ponctuelle.</p>
+          <button class="btn" onclick="mode('presence')">Retour</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+<div id="ws3-footer" class="consultation-footer hidden">
+  <span class="muted">Consultation en cours · 00:01</span>
+  <button class="btn btn-primary" onclick="openClosure()">Terminer la consultation →</button>
+</div>
+
+<!-- ═══ MODE CLÔTURE — HYPOTHÈSE PRODUIT À TESTER ═══ -->
+<section id="closure" class="page hidden">
+  <div class="breadcrumb">Mon espace → Michel Rousseau → Consultation → Clôture</div>
+  <div class="closure-header">
+    <div>
+      <div class="section-eyebrow" style="margin:0 0 4px">Mode clôture</div>
+      <h1 style="font-size:20px">Terminer la consultation</h1>
+      <p class="muted" style="font-size:13px;margin-top:2px">La consultation reste ouverte jusqu'à votre validation.</p>
+    </div>
+    <span class="closure-pill">Consultation ouverte</span>
+  </div>
+  <div class="closure-grid">
+    <div class="card">
+      <div class="card-header"><span class="card-header-title">Note de consultation</span></div>
+      <div class="card-body">
+        <p class="muted" style="font-size:12px">Le contenu capturé pendant la consultation est repris ici. Vous pouvez le compléter ou le laisser vide.</p>
+        <textarea id="closure-note">Suivi diabète. Point sur le traitement et les derniers résultats.</textarea>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-header-title">Actions</span></div>
+      <div class="card-body">
+        <div id="closure-done" class="hidden" style="margin-bottom:16px">
+          <p class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Déjà réalisé pendant la consultation</p>
+          <div class="output-list" id="closure-done-list"></div>
+        </div>
+        <p class="muted" style="font-size:12px">Ce qui reste à produire, si nécessaire.</p>
+        <div class="output-list" id="closure-outputs">
+          <button class="output-item" data-key="ordonnance" onclick="toggleOutput(this)"><span class="output-icon">💊</span><span><b>Ordonnance</b><small>Prescrire un traitement</small></span><span class="output-check">+</span></button>
+          <button class="output-item" data-key="orientation" onclick="toggleOutput(this)"><span class="output-icon">🧭</span><span><b>Orientation</b><small>Adresser à un confrère</small></span><span class="output-check">+</span></button>
+          <button class="output-item" data-key="examen" onclick="toggleOutput(this)"><span class="output-icon">🔬</span><span><b>Examen</b><small>Demander un examen</small></span><span class="output-check">+</span></button>
+          <button class="output-item" data-key="courrier" onclick="toggleOutput(this)"><span class="output-icon">✉️</span><span><b>Courrier</b><small>Préparer une correspondance</small></span><span class="output-check">+</span></button>
+          <button class="output-item" data-key="rdv" onclick="toggleOutput(this)"><span class="output-icon">📅</span><span><b>Prochain rendez-vous</b><small>Prévoir la suite</small></span><span class="output-check">+</span></button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="closure-footer">
+    <button class="btn" onclick="show('ws3')">← Retour à la consultation</button>
+    <div class="right">
+      <button class="btn" onclick="quickClose()">Rien à signaler</button>
+      <button class="btn btn-primary" onclick="closeFromClosure()">Enregistrer et clôturer</button>
+    </div>
+  </div>
+  <div class="hyp-note"><b>HYPOTHÈSE — À TESTER</b> · Les sorties proposées ici illustrent la variabilité produit par métier (OBS-M2-003, précision 2026-09-08). Leur présence, leur ordre et leur forme ne sont pas encore validés par le terrain. Depuis le 2026-09-10 (Mode Action, WS-003 v2.8), cette liste exclut ce qui a déjà été produit pendant la consultation — le sens exact de « Rien à signaler » dans ce cas reste non tranché (OQ-W-014).</div>
+</section>
+
+<!-- ═══ WS-004 — mots corrigés le 2026-09-08 ═══ -->
+<section id="ws4" class="page hidden">
+  <div class="breadcrumb">Mon espace → Récemment produit</div>
+  <h1 style="font-size:20px;margin-bottom:4px">Récemment produit</h1>
+  <p class="muted" style="font-size:13px;margin-bottom:16px">Ce qui a été produit ou structuré à partir du travail clinique.</p>
+  <div class="closure-grid">
+    <div class="card">
+      <div class="card-header"><span class="card-header-title">Derniers éléments produits</span></div>
+      <div class="ws-item"><b>Ordonnance · Michel Rousseau</b><br><span class="muted" style="font-size:12px">Aujourd'hui · traitement diabète</span></div>
+      <div class="ws-item"><b>Courrier · Sophie Martin</b><br><span class="muted" style="font-size:12px">Hier · correspondance</span></div>
+      <div class="ws-item"><b>Plan de suivi · Jean Morel</b><br><span class="muted" style="font-size:12px">Hier · prochain contact</span></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-header-title">Capacités disponibles</span></div>
+      <div class="card-body">
+        <div class="list-row"><div><b>Ordonnance</b><br><span class="muted" style="font-size:12px">Propre à votre métier</span></div><span class="ws-pill">Actif</span></div>
+        <div class="list-row"><div><b>Courrier</b><br><span class="muted" style="font-size:12px">Commun à tous les métiers</span></div><span class="ws-pill">Actif</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ WS-005 — gardé tel quel ═══ -->
+<section id="ws5" class="page hidden">
+  <div class="breadcrumb">Mon espace → Actions</div>
+  <h1 style="font-size:20px;margin-bottom:4px">Actions à poursuivre</h1>
+  <p class="muted" style="font-size:13px;margin-bottom:16px">Les éléments qui nécessitent encore une action après la consultation.</p>
+  <div class="card">
+    <div class="card-header"><span class="card-header-title">À traiter</span></div>
+    <div class="ws-item"><b>Sophie Martin</b><br><span class="muted" style="font-size:12px">Examiner le nouveau bilan</span> <span class="ws-pill">Résultat</span></div>
+    <div class="ws-item"><b>Jean Morel</b><br><span class="muted" style="font-size:12px">Lire le courrier de confrère</span> <span class="ws-pill">Document</span></div>
+    <div class="ws-item"><b>Michel Rousseau</b><br><span class="muted" style="font-size:12px">Réévaluer HbA1c au prochain suivi</span> <span class="ws-pill">Suivi</span></div>
+  </div>
+</section>
+
+<!-- ═══ WS-006 — JE TERMINE (nouveau en v6) ═══ -->
+<!--
+  Aucun Blueprint. Statut `Research Workspace` (GOV-000 §4). Première matérialisation, pas une
+  conception validée. Chaque bloc renvoie explicitement à une question déjà écrite, jamais posée
+  (CWRM-020-APX-M2-workspace-questionnaires §6) — voir la note HYPOTHÈSE en bas de cet écran.
+-->
+<section id="ws6" class="page hidden">
+  <div class="breadcrumb">Mon espace → Je termine</div>
+  <div class="section-eyebrow">Fin de journée</div>
+  <h1 style="font-size:20px;margin-bottom:4px">Je termine ma journée</h1>
+  <p class="muted" style="font-size:13px;margin-bottom:20px">Mardi 8 septembre 2025</p>
+
+  <div class="card">
+    <div class="card-header"><span class="card-header-title">Consultations encore ouvertes</span></div>
+    <div class="card-body">
+      <!-- État réel, pas une donnée statique — reflète consultationPaused, mis à jour par updateWS6() -->
+      <div id="ws6-open-row" class="list-row hidden">
+        <div><b>Michel Rousseau</b><br><span class="muted" style="font-size:12px">Consultation en pause · non clôturée</span></div>
+        <button class="btn btn-primary" onclick="resumeConsultation()">Reprendre</button>
+      </div>
+      <p id="ws6-open-empty" class="muted hidden" style="font-size:13px">Aucune consultation en attente — tout est clôturé.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="card-header-title">À reporter à demain</span></div>
+    <div class="card-body">
+      <div class="list-row"><div><b>Sophie Martin</b><br><span class="muted" style="font-size:12px">Avis cardiologie non encore lu</span></div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="card-header-title">Avant de partir</span></div>
+    <div class="card-body checklist">
+      <label><input type="checkbox"> Vérifier le matériel</label>
+      <label><input type="checkbox"> Sauvegarder les dossiers du jour</label>
+      <label><input type="checkbox"> Faire le tour du cabinet</label>
+    </div>
+  </div>
+
+  <div style="margin-top:18px;text-align:right">
+    <button class="btn btn-primary" onclick="closeDay()">Terminer ma journée →</button>
+  </div>
+
+  <div class="hyp-note">
+    <b>HYPOTHÈSE — À TESTER</b> · Première matérialisation de WS-006, aucun Blueprint. Chaque bloc
+    correspond à une question déjà écrite, jamais posée à un praticien (CWRM-020-APX-M2-workspace-questionnaires
+    §6) : "Consultations encore ouvertes" → <i>"Comment savez-vous que votre journée est vraiment
+    terminée ?"</i> ; "À reporter à demain" → <i>"Les tâches reportées, vous les retrouvez où le
+    lendemain ?"</i> ; "Avant de partir" (ACT-F001-024→027, illustratif) → <i>"Qu'est-ce qui vous
+    empêcherait de partir tranquille, ce soir ?"</i>. La frontière avec WS-001 le lendemain matin
+    (est-ce que ce qui est reporté ici redevient visible dans "Mon Espace" ?) reste explicitement
+    ouverte (OBS-M2-005) — non résolue par cet écran.
+  </div>
+</section>
+
+<section id="day-closed" class="page hidden">
+  <div class="card closed-screen">
+    <h1 style="font-size:22px;margin-bottom:8px">Journée terminée</h1>
+    <p class="muted" style="margin-bottom:24px">À demain.</p>
+    <button class="btn btn-primary" onclick="show('dash')">Retour à Mon espace</button>
+  </div>
+</section>
+
+<!-- ═══ CARE RECORD (inchangé — filtrage par catégorie figé) ═══ -->
+<section id="record" class="page hidden">
+  <div class="breadcrumb" id="record-crumb">Mon espace → Michel Rousseau → Care Record</div>
+  <div class="patient-banner" style="border:1px solid var(--border);border-radius:var(--radius);margin-bottom:16px">
+    <div class="patient-avatar">MR</div>
+    <div class="patient-info">
+      <div class="patient-name">Michel Rousseau</div>
+      <div class="patient-meta">58 ans · né le 14/03/1968 · Suivi depuis 2014</div>
+    </div>
+    <div class="banner-stats">
+      <div class="banner-stat"><div class="banner-stat-value" style="color:var(--accent)">7</div><div class="banner-stat-label">Traitements</div></div>
+      <div class="banner-stat"><div class="banner-stat-value" style="color:var(--warn)">2</div><div class="banner-stat-label">Alertes</div></div>
+      <div class="banner-stat"><div class="banner-stat-value" style="color:var(--text-muted)">12 ans</div><div class="banner-stat-label">Suivi</div></div>
+    </div>
+  </div>
+  <p class="muted" style="margin-bottom:4px">La profondeur clinique est disponible à la demande.</p>
+  <div class="record-grid">
+    <div class="record-card" id="rc-historique">
+      <div class="record-card-icon">🕐</div><b>Historique</b>
+      <div class="rc-list">
+        <div class="rc-item"><span class="rc-item-date">18/06/26</span><span class="rc-item-label">Suivi diabète · HbA1c 8,1 %, discussion observance</span></div>
+        <div class="rc-item"><span class="rc-item-date">12/05/26</span><span class="rc-item-label">Renouvellement ordonnance · RAS</span></div>
+        <div class="rc-item"><span class="rc-item-date">03/04/26</span><span class="rc-item-label">Consultation intercurrente · épisode grippal</span></div>
+        <div class="rc-item"><span class="rc-item-date">20/02/26</span><span class="rc-item-label">Bilan annuel · ECG normal</span></div>
+        <div class="rc-item"><span class="rc-item-date">15/01/26</span><span class="rc-item-label">Suivi · ajustement metformine</span></div>
+      </div>
+      <div class="rc-more">+ 33 consultations depuis 2014</div>
+    </div>
+    <div class="record-card" id="rc-resultats">
+      <div class="record-card-icon">🧪</div><b>Résultats</b>
+      <div class="rc-list">
+        <div class="rc-item"><span class="rc-item-date">18/06/26</span><span class="rc-item-label">HbA1c — 8,1 % (cible &lt;7 %)</span></div>
+        <div class="rc-item"><span class="rc-item-date">18/06/26</span><span class="rc-item-label">Bilan lipidique complet</span></div>
+        <div class="rc-item"><span class="rc-item-date">12/05/26</span><span class="rc-item-label">Créatinine, DFG</span></div>
+        <div class="rc-item"><span class="rc-item-date">20/02/26</span><span class="rc-item-label">ECG de repos</span></div>
+        <div class="rc-item"><span class="rc-item-date">20/02/26</span><span class="rc-item-label">Bilan hépatique</span></div>
+        <div class="rc-item"><span class="rc-item-date">05/01/26</span><span class="rc-item-label">Microalbuminurie</span></div>
+      </div>
+      <div class="rc-more">+ 6 résultats plus anciens</div>
+    </div>
+    <div class="record-card" id="rc-ordonnances">
+      <div class="record-card-icon">💊</div><b>Ordonnances</b>
+      <div class="rc-list">
+        <div class="rc-item"><span class="rc-item-date">18/06/26</span><span class="rc-item-label">Metformine 1000 mg × 2/j (ajustement)</span></div>
+        <div class="rc-item"><span class="rc-item-date">12/05/26</span><span class="rc-item-label">Amlodipine 5 mg — renouvellement</span></div>
+        <div class="rc-item"><span class="rc-item-date">20/02/26</span><span class="rc-item-label">Atorvastatine 20 mg</span></div>
+      </div>
+      <div class="rc-more">+ 11 ordonnances antérieures</div>
+    </div>
+    <div class="record-card" id="rc-documents">
+      <div class="record-card-icon">📎</div><b>Documents</b>
+      <div class="rc-list">
+        <div class="rc-item"><span class="rc-item-date">03/25</span><span class="rc-item-label">Échographie abdominale — CR</span></div>
+        <div class="rc-item"><span class="rc-item-date">11/24</span><span class="rc-item-label">Radiographie thorax — CR</span></div>
+      </div>
+      <div class="rc-more">+ 2 documents plus anciens</div>
+    </div>
+    <div class="record-card" id="rc-antecedents">
+      <div class="record-card-icon">🏥</div><b>Antécédents</b>
+      <div class="rc-list">
+        <div class="rc-item"><span class="rc-item-date">2014</span><span class="rc-item-label">Diabète de type 2</span></div>
+        <div class="rc-item"><span class="rc-item-date">2016</span><span class="rc-item-label">Hypertension artérielle</span></div>
+        <div class="rc-item"><span class="rc-item-date">1998</span><span class="rc-item-label">Appendicectomie</span></div>
+        <div class="rc-item"><span class="rc-item-date">—</span><span class="rc-item-label" style="color:var(--alert)">Allergie : pénicilline</span></div>
+      </div>
+    </div>
+    <div class="record-card" id="rc-famille">
+      <div class="record-card-icon">👨‍👩‍👧</div><b>Famille</b>
+      <div class="rc-list">
+        <div class="rc-item"><span class="rc-item-date">Père</span><span class="rc-item-label">Diabète type 2, IDM (décès à 68 ans)</span></div>
+        <div class="rc-item"><span class="rc-item-date">Mère</span><span class="rc-item-label">Hypertension artérielle</span></div>
+      </div>
+    </div>
+    <div class="record-card" id="rc-vaccins">
+      <div class="record-card-icon">💉</div><b>Vaccins</b>
+      <div class="rc-list">
+        <div class="rc-item"><span class="rc-item-date">10/25</span><span class="rc-item-label">Grippe saisonnière</span></div>
+        <div class="rc-item"><span class="rc-item-date">2023</span><span class="rc-item-label">DTP — à jour</span></div>
+        <div class="rc-item"><span class="rc-item-date">2022</span><span class="rc-item-label">Covid — 2ᵉ rappel</span></div>
+      </div>
+    </div>
+    <div class="record-card" id="rc-notes">
+      <div class="record-card-icon">📝</div><b>Mes notes</b>
+      <div class="rc-list">
+        <div class="rc-item"><span class="rc-item-date">18/06/26</span><span class="rc-item-label">Discuter observance metformine au prochain RDV</span></div>
+        <div class="rc-item"><span class="rc-item-date">20/02/26</span><span class="rc-item-label">Vérifier fond d'œil annuel — pas fait depuis 14 mois</span></div>
+      </div>
+    </div>
+    <div class="record-card" id="rc-courriers">
+      <div class="record-card-icon">📬</div><b>Courriers</b>
+      <div class="rc-list">
+        <div class="rc-item"><span class="rc-item-date">14/05/26</span><span class="rc-item-label">Dr Lefèvre (cardiologue) — suivi post-consultation, ECG normal</span></div>
+        <div class="rc-item"><span class="rc-item-date">22/03/26</span><span class="rc-item-label">Dr Nguyen (endocrinologue) — avis intensification traitement</span></div>
+        <div class="rc-item"><span class="rc-item-date">10/01/26</span><span class="rc-item-label">Dr Petit (ophtalmologue) — fond d'œil, pas de rétinopathie</span></div>
+        <div class="rc-item"><span class="rc-item-date">15/09/25</span><span class="rc-item-label">Dr Lefèvre (cardiologue) — bilan cardiovasculaire annuel</span></div>
+      </div>
+      <div class="rc-more">+ 3 courriers plus anciens</div>
+    </div>
+  </div>
+  <div style="margin-top:20px"><button class="btn btn-primary" id="record-back" onclick="show(recordOrigin)">← Retour</button></div>
+</section>
+
+<!-- ═══ CLÔTURE CONSULTATION ═══ -->
+<section id="closed" class="page hidden">
+  <div class="card closed-screen">
+    <h1 style="font-size:22px;margin-bottom:8px">Consultation clôturée</h1>
+    <p class="muted" style="margin-bottom:24px">La journée redevient votre point d'ancrage.</p>
+    <button class="btn btn-primary" onclick="show('dash')">Retour à Mon espace</button>
+  </div>
+</section>
+
+<script>
+const ids = ['dash','patient','ws3','closure','ws4','ws5','ws6','day-closed','record','closed'];
+const titles = {
+  dash:       { back: null },
+  patient:    { back: { label: '← Mon espace', action: () => show('dash') } },
+  ws3:        { back: { label: '⏸ Mettre en pause', action: () => pauseConsultation() } },
+  closure:    { back: { label: '← Retour à la consultation', action: () => show('ws3') } },
+  ws4:        { back: { label: '← Mon espace', action: () => show('dash') } },
+  ws5:        { back: { label: '← Mon espace', action: () => show('dash') } },
+  ws6:        { back: { label: '← Mon espace', action: () => show('dash') } },
+  'day-closed': { back: null },
+  record:     { back: null }, // géré dynamiquement par openRecord()
+  closed:     { back: null }
+};
+let recordOrigin = 'patient';
+let consultationPaused = false; // Mode Interruption/Recovery — ADR-0023 §4, minimal pour le test
+
+// Mode Action (WS-003 v2.8, 2026-09-10) — actions produites pendant la consultation, pas seulement
+// en Mode Clôture. actionsDone est réinitialisé à chaque clôture (voir quickClose/closeFromClosure).
+let actionsDone = new Set();
+const actionLabels = {
+  ordonnance:  '💊 Ordonnance',
+  orientation: '🧭 Orientation',
+  examen:      '🔬 Examen',
+  courrier:    '✉️ Courrier',
+  rdv:         '📅 Prochain rendez-vous'
+};
+
+function setTopbarBack(cfg) {
+  const btn = document.getElementById('topbar-back');
+  const sep = document.getElementById('topbar-sep');
+  if (cfg) {
+    btn.textContent = cfg.label;
+    btn.onclick = cfg.action;
+    btn.classList.remove('hidden');
+    sep.classList.remove('hidden');
+  } else {
+    btn.classList.add('hidden');
+    sep.classList.add('hidden');
+  }
+}
+
+function updateTopbarMode(id) {
+  const isDash = (id === 'dash');
+  document.getElementById('topbar-search').classList.toggle('hidden', !isDash);
+  document.getElementById('topbar-simple').classList.toggle('hidden', isDash);
+  document.getElementById('topbar-dash-right').classList.toggle('hidden', !isDash);
+}
+
+// WS-006 : reflète l'état réel de la consultation, pas une donnée figée.
+function updateWS6State() {
+  document.getElementById('ws6-open-row').classList.toggle('hidden', !consultationPaused);
+  document.getElementById('ws6-open-empty').classList.toggle('hidden', consultationPaused);
+}
+
+function show(id) {
+  ['dash','patient','patient-banner','patient-body','ws3','ws3-footer','closure','ws4','ws5','ws6','day-closed','record','closed']
+    .forEach(x => document.getElementById(x).classList.add('hidden'));
+
+  document.getElementById(id).classList.remove('hidden');
+  if (id === 'patient') {
+    document.getElementById('patient-banner').classList.remove('hidden');
+    document.getElementById('patient-body').classList.remove('hidden');
+  }
+  if (id === 'ws3') {
+    document.getElementById('ws3-footer').classList.remove('hidden');
+  }
+  if (id === 'dash') {
+    document.getElementById('continuity-card').classList.toggle('hidden', !consultationPaused);
+  }
+  if (id === 'ws6') {
+    updateWS6State();
+  }
+
+  updateTopbarMode(id);
+  const cfg = titles[id].back;
+  setTopbarBack(cfg);
+}
+
+function pauseConsultation() {
+  consultationPaused = true;
+  show('dash');
+}
+
+function resumeConsultation() {
+  consultationPaused = false;
+  show('ws3');
+}
+
+function openPatient() { show('patient'); }
+
+function openClosure() {
+  syncClosureWithActionsDone();
+  show('closure');
+}
+
+function toggleOutput(el) {
+  el.classList.toggle('selected');
+  el.querySelector('.output-check').textContent = el.classList.contains('selected') ? '✓' : '+';
+}
+
+// Mode Action (WS-003 v2.8) — produire une action pendant la consultation, sans attendre Mode Clôture.
+function doAction(el) {
+  const key = el.dataset.key;
+  el.classList.toggle('selected');
+  const done = el.classList.contains('selected');
+  el.querySelector('.output-check').textContent = done ? '✓' : '+';
+  if (done) actionsDone.add(key); else actionsDone.delete(key);
+  updatePresenceDoneBadges();
+}
+
+// Reflète, en Mode Présence, ce qui a déjà été produit via Mode Action — « Déjà réalisé ».
+function updatePresenceDoneBadges() {
+  const box = document.getElementById('presence-done');
+  box.innerHTML = '';
+  actionsDone.forEach(key => {
+    const pill = document.createElement('span');
+    pill.className = 'ws-pill';
+    pill.textContent = '✓ ' + actionLabels[key] + ' — déjà réalisé';
+    box.appendChild(pill);
+  });
+  box.classList.toggle('hidden', actionsDone.size === 0);
+}
+
+// Mode Clôture ne propose plus que ce qui reste à faire ; ce qui a déjà été fait via Mode Action
+// apparaît en récapitulatif — cf. WS-003 v2.8 §9 Mode Clôture, amendement 2026-09-10.
+function syncClosureWithActionsDone() {
+  document.querySelectorAll('#closure-outputs .output-item').forEach(item => {
+    item.classList.toggle('hidden', actionsDone.has(item.dataset.key));
+  });
+  const doneBox = document.getElementById('closure-done');
+  const list = document.getElementById('closure-done-list');
+  list.innerHTML = '';
+  actionsDone.forEach(key => {
+    const row = document.createElement('div');
+    row.className = 'output-item';
+    row.style.cursor = 'default';
+    row.innerHTML = '<span class="output-icon">✓</span><span><b>' + actionLabels[key] +
+      '</b><small>Réalisé pendant la consultation</small></span><span class="output-check">✓</span>';
+    list.appendChild(row);
+  });
+  doneBox.classList.toggle('hidden', actionsDone.size === 0);
+}
+
+function quickClose() {
+  consultationPaused = false;
+  actionsDone = new Set();
+  updatePresenceDoneBadges();
+  show('closed');
+}
+
+function closeFromClosure() {
+  consultationPaused = false;
+  actionsDone = new Set();
+  updatePresenceDoneBadges();
+  show('closed');
+}
+
+function closeDay() {
+  show('day-closed');
+}
+
+function openRecord(origin, section) {
+  recordOrigin = origin;
+  document.getElementById('record-crumb').textContent =
+    origin === 'ws3'
+      ? 'Mon espace → Michel Rousseau → Consultation → Care Record'
+      : 'Mon espace → Michel Rousseau → Care Record';
+  document.getElementById('record-back').textContent =
+    origin === 'ws3' ? '← Retour à la consultation' : '← Retour à Michel Rousseau';
+  show('record');
+  setTopbarBack({
+    label: origin === 'ws3' ? '← Retour à la consultation' : '← Retour à Michel Rousseau',
+    action: () => show(recordOrigin)
+  });
+  document.querySelectorAll('.record-card.target').forEach(el => el.classList.remove('target'));
+  if (section) {
+    const target = document.getElementById('rc-' + section);
+    if (target) {
+      target.classList.add('target');
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }
+}
+
+function mode(id) {
+  ['presence','capture','action','follow'].forEach(x =>
+    document.getElementById(x).classList.add('mode-hidden'));
+  document.getElementById(id).classList.remove('mode-hidden');
+}
+
+show('dash');
+</script>
+</body>
+</html>

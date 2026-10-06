@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | ID | WS-002 |
-| Version | 0.2 |
+| Version | 0.4 |
 | Status | **Prototype — Pending User Test** |
 | Lifecycle | ☐ Discovery · ☑ Blueprint · ☑ Prototype · ☐ User Test · ☐ Production |
 | Date | 2026-08-04 |
@@ -274,10 +274,141 @@ Son objectif est uniquement la reprise de contexte pré-consultation.
 
 ---
 
-## 13. Évolution
+## 13. Fiche d'implémentation (Phase 2 — Freeze V1, 2026-10-05)
+
+> Ce Blueprint date du 2026-08-04 — **avant** les 6 sessions de test praticien du round M2
+> (2026-08-17 → 2026-09-15, voir [M2-JOURNAL-observations](../M2-JOURNAL-observations.md)). §2
+> (Evidence), §4 (Display Rules) et §12 (Evidence Quality Summary) ci-dessus n'ont **jamais été mis à
+> jour** pour intégrer ce que le terrain a depuis appris. Cette fiche documente l'implémentation
+> réelle (`WS-002-WS-003-parcours-v8.html`) telle qu'elle est aujourd'hui — pas une relecture du
+> Blueprint d'origine.
+
+**Objectif.** Inchangé — Q-002, §1.
+
+**Entrée.** Depuis "Patients du jour" (Mon Espace) uniquement — `openPatient()`. Depuis la liste
+"Patients" (annuaire général), l'entrée a été délibérément redirigée vers le **Care Record**, pas
+WS-002 (décision prise pendant cette session : annuaire général ≠ patient vu aujourd'hui). Aucune autre
+entrée n'existe.
+
+**Sortie.** → WS-003 ("Démarrer la consultation", réel) · → Care Record ("Consulter le dossier
+complet", réel) · → Mon Espace ("← Retour", "Annuler" avec note, réel) · "Décaler" reste décoratif
+(alerte de prototype, aucun calendrier connecté).
+
+**Actions (réelles vs décoratives).** Réelles : Démarrer la consultation, Consulter le dossier complet,
+Annuler (ouvre un encart de motif), Retour à Mon espace. Décorative : Décaler le rendez-vous.
+
+**Données nécessaires — écart avec le Blueprint d'origine.** Le Blueprint prévoit 4 blocs
+(Présence/Continuité/Intention/Historique, §7) dont le contenu varie **par Display Rule (DR-001 à
+DR-004, par profil)**. **Le prototype n'implémente aucune des 4 Display Rules** — un seul format fixe
+est testé, quelle que soit la profession du praticien connecté (toujours Dr Durand / Michel Rousseau).
+Ajout non prévu au Blueprint : l'encart "Dernière note", introduit en session, absent des 4 blocs
+d'origine.
+
+**Règles — ce qui est confirmé depuis par le terrain, au-delà du Blueprint d'origine.**
+- PP-005 (surface recent first) — cohérent avec "2 · Continuité", mais désormais **beaucoup mieux
+  corroboré** que ce que §12 indique : confirmé sur 5+ sessions (OBS-M2-006 à 012), pas seulement les
+  4-5 profils du corpus `CWRM-001` d'origine.
+- **"Lecture A" (quitter la page vers le Care Record complet)** — comportement entièrement absent du
+  Blueprint §4/§7 (qui ne parle que de Display Rules par profil), mais **gelé dans le code depuis le
+  2026-09-08** suite à 2 confirmations nettes (médecin, biologiste) contre 1 divergence non lissée
+  (kiné, accordéon — `NON CORROBORÉ`, voir OBS-M2-010). Ce n'est pas une Display Rule DR-00N du
+  Blueprint — c'est un comportement de navigation transversal, découvert en test, jamais intégré au
+  document d'origine.
+- **Filtrage du Care Record par catégorie** (ancrage + surlignage, OBS-M2-012, gelé le 2026-09-08) —
+  également absent du Blueprint, également une réponse directe à un problème observé en session, pas
+  anticipée par le document d'origine.
+- DR-001 à DR-004 (par profil : longitudinal/grossesse/acte/coordination) — **non implémentées, jamais
+  testées telles quelles**. Les 6 sessions M2 ont testé des professions différentes de celles citées en
+  exemple dans ces DR (médecin spécialiste, thérapeute, kiné, biologiste, généraliste, infirmière PSAD
+  — aucune sage-femme ni échographiste ni infirmière coordinatrice). CPP-001 (Cross-Practitioner
+  Principle) suggère que la variation est plutôt *par contenu* que par Display Rule structurelle
+  (OBS-M2-007/009) — une lecture différente de celle du Blueprint d'origine, jamais réconciliée avec
+  lui.
+
+**États.** Patient connu avec historique riche — seul état testé (toujours Michel Rousseau). **Première
+consultation / nouveau patient (OQ-P-004, toujours `Open`)** — aucun état construit, ni dans le
+Blueprint ni dans le prototype. Patient sans intentions documentées (Bloc 3 absent, §7) — non
+implémenté explicitement dans le prototype actuel (le bloc Intention est toujours présent pour Michel
+Rousseau).
+
+**Erreurs / cas limites non couverts.**
+- Reprise de contexte inter-praticien (hors scope Blueprint §8) — non testée, non implémentée.
+- Première consultation (OQ-P-004) — non testée, non implémentée.
+- Divergence Lecture A/accordéon non résolue pour les professions paramédicales au-delà du kiné
+  (OBS-M2-010, `NON CORROBORÉ`, pas encore un 3ᵉ/4ᵉ praticien).
+
+**UX.** Renvoi au prototype v8 — avec l'avertissement inverse de WS-001 : ici, le prototype est **plus
+riche et plus validé** que le Blueprint §2/§4/§12 ne le reflète. Avant Phase 3/4, les sections Evidence
+et Display Rules de ce document devraient être réécrites à partir du corpus M2 réel, pas conservées
+telles quelles depuis le 2026-08-04.
+
+### Requalification ADR-0025 (2026-10-06)
+
+> Lecture [ADR-0025](../../adr/ADR-0025-innovations-produit-non-observees.md). Ici, le prototype est
+> **en avance** sur le Blueprint : Lecture A et le filtrage par catégorie du Care Record ont été
+> testés en session M2 (OBS-M2-010, OBS-M2-012) — ce ne sont pas des hypothèses, ce sont des
+> décisions `→` à reporter dans §2/§4 lors de leur réécriture. Seuls les éléments jamais confrontés
+> au terrain reçoivent une fiche HYP. "Majorité" = plus de la moitié des praticiens du round.
+
+| HYP | Élément | Origine | Problème visé |
+|---|---|---|---|
+| 001 | Encart "Dernière note" | Founder-Driven | PP-005 (*surface recent first*), OBS-M2-006 à 012 |
+| 002 | Format unique sans Display Rules par profil | Founder-Driven (de fait) — lecture CPP-001 | OBS-M2-007, OBS-M2-009 (`≈`) |
+| 003 | "Annuler" (avec motif) et "Décaler" dans WS-002 | Founder-Driven | Aucun ancrage — à documenter |
+| 004 | Annuaire "Patients" → Care Record, pas WS-002 | Founder-Driven (décision de session) | ADR-0023 §7 R1 |
+
+```
+HYP-002-001 — Encart "Dernière note"
+Hypothèse:          La dernière note du praticien est le moyen le plus rapide de reprendre le fil
+Risque si faux:     Doublon avec le bloc "Continuité" — deux endroits pour la même information récente
+Test:               "Qu'avez-vous regardé pour vous rappeler où vous en étiez avec ce patient ?"
+Critère d'abandon:  La majorité utilise le bloc Continuité et ignore l'encart → encart fusionné dans
+                    Continuité
+Statut:             ? ⚠ — À tester
+
+HYP-002-002 — Format unique (variation par contenu, pas par Display Rule)
+Hypothèse:          Un seul format dont le contenu varie suffit pour toutes les professions (CPP-001),
+                    sans les Display Rules DR-001 à DR-004 du Blueprint
+Risque si faux:     Une profession ne trouve pas son information clé (grossesse, série d'actes…)
+Test:               Recruter au moins une profession citée par DR-001 à DR-004 et absente des 6 sessions
+                    (sage-femme, échographiste, infirmière coordinatrice) : trouve-t-elle son
+                    information clé en moins de 30 s ?
+Critère d'abandon:  Une profession échoue → la Display Rule correspondante est réintroduite pour cette
+                    profession (pas pour toutes)
+Statut:             ? ⚠ — À tester (DR-001 à DR-004 restent dans le Blueprint jusqu'au résultat)
+
+HYP-002-003 — Annuler / Décaler depuis WS-002
+Hypothèse:          Le praticien gère lui-même l'annulation d'un rendez-vous au moment où il regarde le
+                    patient, et veut en garder le motif
+Risque si faux:     WS-002 glisse vers la gestion d'agenda — ADR-0023 lui donne "comprendre", pas
+                    "planifier"
+Test:               "Quand un rendez-vous est annulé, qui s'en occupe, et où ?"
+Critère d'abandon:  Annulation gérée par un secrétariat ou un agenda externe pour la majorité → actions
+                    retirées de WS-002
+Statut:             ? ⚠ — À tester
+
+HYP-002-004 — Annuaire → Care Record
+Hypothèse:          Un patient cherché dans l'annuaire n'est pas un patient vu aujourd'hui : on veut
+                    son dossier, pas sa préparation
+Risque si faux:     Le praticien cherche un patient pour préparer une visite non planifiée et arrive
+                    sur un dossier complet trop dense
+Test:               Tâche : "Retrouvez Michel Rousseau depuis la recherche" — l'écran d'arrivée
+                    correspond-il à ce qu'il attendait ?
+Critère d'abandon:  La majorité attendait la synthèse → l'annuaire ouvre WS-002 (toujours sans démarrer
+                    de consultation, ADR-0023 §7 R1)
+Statut:             ? ⚠ — À tester
+```
+
+**Manque, pas hypothèse** : état "première consultation / nouveau patient" (OQ-P-004).
+
+---
+
+## 14. Évolution
 
 | Version | Date | Nature |
 |---|---|---|
 | 0.1 | 2026-08-04 | Blueprint initial post-revue critique — Sprint 1.1 consolidation |
 | 0.1 | 2026-08-04 | Prototype v0.1 créé — 4 profils Display Rule |
 | 0.2 | 2026-08-04 | Suppression Invariants · PR→PP · Context Confidence · OQ Status |
+| 0.3 | 2026-10-05 | §13 ajoutée — Fiche d'implémentation (Phase 2, freeze V1). Constat : §2/§4/§12 datent d'avant le round M2 (6 sessions) et n'ont jamais été mis à jour ; Lecture A et le filtrage par catégorie du Care Record (gelés en code depuis le 2026-09-08) sont absents du Blueprint d'origine ; DR-001 à DR-004 ne sont pas implémentées et n'ont pas été testées telles que définies |
+| 0.4 | 2026-10-06 | Requalification [ADR-0025](../../adr/ADR-0025-innovations-produit-non-observees.md) (§13) : Lecture A et filtrage par catégorie reconnus comme décisions testées (`→`), pas hypothèses. 4 fiches HYP-002-001 à 004 (Dernière note, format unique vs DR-001 à 004, Annuler/Décaler, annuaire → Care Record). HYP-002-002 exige de recruter une profession citée par les DR et absente des 6 sessions. |

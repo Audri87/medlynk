@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MedLink — WS-003 V2.1 — Design Exploration</title>
+<style>
+:root{--navy:#17324d;--ink:#1f2933;--muted:#718096;--line:#e4e9ee;--bg:#f5f7f9;--white:#fff;--accent:#2f6f95;--soft:#edf4f8}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif}
+.top{height:64px;background:var(--navy);color:#fff;display:flex;align-items:center;padding:0 28px;gap:30px}.logo{font-weight:700;font-size:21px}.crumb{font-size:14px;opacity:.8}.topright{margin-left:auto;font-size:13px}
+.layout{display:grid;grid-template-columns:220px 1fr;min-height:calc(100vh - 64px)}.side{background:#fff;border-right:1px solid var(--line);padding:24px 16px}.section{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#8794a1;margin:12px 10px}.nav{padding:11px 12px;border-radius:7px;font-size:14px;margin-bottom:4px}.nav.active{background:var(--soft);color:var(--navy);font-weight:650}
+.main{padding:26px 34px 40px;max-width:1180px;width:100%;margin:auto}.patient{background:#fff;border:1px solid var(--line);border-radius:10px;padding:18px 20px;display:flex;align-items:center;gap:18px}.avatar{width:46px;height:46px;border-radius:50%;background:#e8eef3;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--navy)}.pname{font-size:18px;font-weight:700}.meta{font-size:13px;color:var(--muted);margin-top:4px}.safety{margin-left:auto;font-size:12px;background:#f7f2e7;border:1px solid #eadfca;padding:7px 10px;border-radius:6px}
+h1{font-size:24px;margin:26px 0 6px}.sub{color:var(--muted);font-size:14px;margin-bottom:20px}.workspace{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:20px}.card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:20px}.card h2{font-size:16px;margin:0 0 14px}
+.continuity{background:#f8fafb;border-left:3px solid var(--accent);padding:12px 14px;border-radius:5px;margin-bottom:18px}.continuity strong{display:block;font-size:13px;margin-bottom:5px}.continuity p{margin:0;font-size:13px;line-height:1.5}
+textarea{width:100%;min-height:285px;border:1px solid #d9e0e6;border-radius:7px;padding:14px;font:inherit;resize:vertical}.actions{display:flex;justify-content:space-between;align-items:center;margin-top:14px}
+button{font:inherit;border-radius:7px;padding:10px 15px;border:1px solid #d6dee5;background:#fff;color:var(--ink);cursor:pointer}.primary{background:var(--navy);color:#fff;border-color:var(--navy);font-weight:650}.link{border:0;background:transparent;color:var(--accent);padding-left:0}.right-card{margin-bottom:16px}.right-card p{font-size:13px;line-height:1.5;color:#5f6c78;margin:0}.item{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line);font-size:13px}.item:last-child{border:0}.badge{font-size:11px;background:#edf1f4;padding:3px 6px;border-radius:5px;color:#5f6c78}.footer{text-align:center;color:#8a949d;font-size:11px;margin-top:20px}
+@media(max-width:850px){.layout{grid-template-columns:1fr}.side{display:none}.workspace{grid-template-columns:1fr}.main{padding:18px}}
+</style>
+</head>
+<body>
+<header class="top"><div class="logo">MedLink</div><div class="crumb">Mon Espace / Patient / Consultation</div><div class="topright">Dr. Martin · 17:24</div></header>
+<div class="layout">
+<aside class="side"><div class="section">Espace</div><div class="nav">Mon Espace</div><div class="nav">Patients</div><div class="section">Patient</div><div class="nav">Contexte patient</div><div class="nav active">Consultation</div><div class="section">Actions</div><div class="nav">Dossier patient</div></aside>
+<main class="main">
+<section class="patient"><div class="avatar">JD</div><div><div class="pname">Jean Dupont</div><div class="meta">62 ans · Dernière consultation : 12 juin 2026</div></div><div class="safety">Allergie : pénicilline</div></section>
+<h1>Consultation</h1><div class="sub">La consultation en cours reste votre espace de travail principal.</div>
+<div class="workspace">
+<section class="card">
+<h2>Continuité</h2><div class="continuity"><strong>Dernier contact · 12 juin 2026</strong><p>Suivi du traitement en cours. Bilan demandé ; résultat disponible depuis le 18 juin.</p></div>
+<h2>Note de consultation</h2><textarea placeholder="Commencez votre note…"></textarea>
+<div class="actions"><button class="link">← Retour au contexte patient</button><div><button>Pause</button> <button class="primary">Clôturer la consultation</button></div></div>
+</section>
+<aside>
+<section class="card right-card"><h2>Dossier patient</h2><p>Accéder aux informations détaillées sans quitter la consultation.</p><button class="primary" style="margin-top:14px;width:100%">Ouvrir le dossier</button></section>
+<section class="card right-card"><h2>Accès rapide</h2><div class="item">Résultats <span class="badge">3</span></div><div class="item">Traitements <span class="badge">2</span></div><div class="item">Antécédents <span class="badge">8</span></div><div class="item">Documents <span class="badge">5</span></div></section>
+<section class="card right-card"><h2>État</h2><p>Cette consultation peut être mise en pause et reprise ultérieurement sans être clôturée.</p></section>
+</aside>
+</div>
+<div class="footer">DESIGN EXPLORATION — NON FROZÉ · WS-003 V2.1</div>
+</main></div>
+</body></html>
